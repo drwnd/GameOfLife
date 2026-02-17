@@ -4,6 +4,8 @@ import core.assets.identifiers.ShaderIdentifier;
 
 public enum Shaders implements ShaderIdentifier {
 
-    COMPUTE
+    GAME_OF_LIFE,
+    CHANGE_CELL,
+    RENDERING
 
 }

@@ -8,6 +8,10 @@ import static org.lwjgl.glfw.GLFW.*;
 
 public class GameInput extends Input {
 
+    public GameInput(Renderer renderer) {
+        this.renderer = renderer;
+    }
+
     @Override
     public void setInputMode() {
 
@@ -38,4 +42,6 @@ public class GameInput extends Input {
     public void charCallback(long window, int codePoint) {
 
     }
+
+    private final Renderer renderer;
 }

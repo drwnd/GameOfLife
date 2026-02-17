@@ -1,0 +1,33 @@
+#version 460 core
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout (r8, binding = 0) writeonly restrict uniform image2D destination;
+layout (r8, binding = 1) readonly restrict uniform image2D source;
+
+uniform int mask;
+
+int valueAt(ivec2 position) {
+    float value = imageLoad(source, position & mask).r;
+    return value == 0.0 ? 0 : 1;
+}
+
+void main() {
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+    int counter = valueAt(texelCoord) << 4;
+
+    counter += valueAt(texelCoord + ivec2(-1, -1));
+    counter += valueAt(texelCoord + ivec2(0, -1));
+    counter += valueAt(texelCoord + ivec2(1, -1));
+
+    counter += valueAt(texelCoord + ivec2(-1, 0));
+    counter += valueAt(texelCoord + ivec2(1, 0));
+
+    counter += valueAt(texelCoord + ivec2(-1, 1));
+    counter += valueAt(texelCoord + ivec2(0, 1));
+    counter += valueAt(texelCoord + ivec2(1, 1));
+
+    int result = (0xc0008 >> counter & 1);
+    imageStore(destination, texelCoord, vec4(result));
+}
