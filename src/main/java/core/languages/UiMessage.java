@@ -27,7 +27,12 @@ public enum UiMessage implements StringGetter {
     PAUSE,
     OPEN_SETTINGS,
     TOGGLE_SIMULATION,
-    SHIFT_BIGGER_DISTANCE;
+    SHIFT_BIGGER_DISTANCE,
+    CHANGE_BACKGROUND_COLOR,
+    CHANGE_CELL_COLOR,
+    RESET_BOARD,
+    RANDOMIZER_THRESHOLD,
+    GAME_INITIALIZER;
 
     @Override
     public String get() {

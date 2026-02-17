@@ -2,12 +2,15 @@ package core.settings;
 
 import core.settings.optionSettings.*;
 import core.languages.Language;
+import game.GameInitializer;
 
 public enum OptionSetting {
 
     FONT(new FontOption("Default")),
     LANGUAGE(new Language("English")),
-    TEXTURE_PACK(new TexturePack("Default"));
+    TEXTURE_PACK(new TexturePack("Default")),
+
+    INITIALIZER(GameInitializer.RANDOM);
 
     public static void setIfPresent(String name, String value) {
         try {

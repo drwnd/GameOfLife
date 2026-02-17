@@ -1,27 +1,34 @@
 package game;
 
 import core.assets.AssetManager;
+import core.languages.Language;
+import core.languages.UiMessage;
 import core.renderables.Renderable;
 import core.rendering_api.Input;
 import core.rendering_api.Window;
 import core.rendering_api.shaders.ComputeShader;
 import core.rendering_api.shaders.GuiShader;
 import core.settings.KeySetting;
+import core.settings.OptionSetting;
 import core.settings.ToggleSetting;
 import org.joml.Vector2f;
 
+import javax.swing.*;
 import java.awt.*;
 
-import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
+import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL46.*;
 
 public final class Renderer extends Renderable {
 
+    public static final int SIZE_BITS = 10;
+    public static final int MASK = (1 << SIZE_BITS) - 1;
+
+
     public Renderer() {
         super(new Vector2f(1.0F), new Vector2f(0.0F));
 
-        texture0 = genTexture(null);
-        texture1 = genTexture(randomizeBoard(0.25));
+        resetBoard();
     }
 
 
@@ -34,6 +41,10 @@ public final class Renderer extends Renderable {
         if (button == KeySetting.SHIFT_LEFT.keybind()) addStart(Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? -256 : -128, 0);
         if (button == KeySetting.SHIFT_UP.keybind()) addStart(0, Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? 256 : 128);
         if (button == KeySetting.SHIFT_DOWN.keybind()) addStart(0, Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? -256 : -128);
+        if (button == KeySetting.RESET_BOARD.keybind()) resetBoard();
+
+//        if (button == KeySetting.CHANGE_BACKGROUND_COLOR.keybind()) backColor = chooseColor(backColor, UiMessage.CHANGE_BACKGROUND_COLOR);
+//        if (button == KeySetting.CHANGE_CELL_COLOR.keybind()) cellColor = chooseColor(cellColor, UiMessage.CHANGE_CELL_COLOR);
     }
 
     public void incCellSize() {
@@ -115,78 +126,24 @@ public final class Renderer extends Renderable {
         return (float) Window.getHeight() / cellSize;
     }
 
-    private short[] fillBoardWithSmallStraightGliders() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < (1 << SIZE_BITS) - 7; x += 7)
-            for (int y = 0; y < (1 << SIZE_BITS) - 6; y += 6) {
-                changePixel(board, x, y);
-                changePixel(board, x + 3, y);
-                changePixel(board, x, y + 2);
-                changePixel(board, x + 4, y + 1);
-                changePixel(board, x + 4, y + 2);
-                changePixel(board, x + 4, y + 3);
-                changePixel(board, x + 1, y + 3);
-                changePixel(board, x + 2, y + 3);
-                changePixel(board, x + 3, y + 3);
-            }
-        return board;
+    private void resetBoard() {
+        if (texture0 != 0) glDeleteTextures(texture0);
+        if (texture1 != 0) glDeleteTextures(texture1);
+
+        GameInitializer initializer = (GameInitializer) OptionSetting.INITIALIZER.value();
+        texture0 = genTexture(null);
+        texture1 = genTexture(initializer.getInitializedBoard());
     }
 
-    private short[] fillBoardWithStraightGliders() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < (1 << SIZE_BITS) - 9; x += 9)
-            for (int y = 0; y < (1 << SIZE_BITS) - 7; y += 7) {
-                changePixel(board, x + 2, y);
-                changePixel(board, x + 3, y);
-                changePixel(board, x, y + 1);
-                changePixel(board, x + 5, y + 1);
-                changePixel(board, x + 6, y + 2);
-                changePixel(board, x, y + 3);
-                changePixel(board, x + 6, y + 3);
-                changePixel(board, x + 1, y + 4);
-                changePixel(board, x + 2, y + 4);
-                changePixel(board, x + 3, y + 4);
-                changePixel(board, x + 4, y + 4);
-                changePixel(board, x + 5, y + 4);
-                changePixel(board, x + 6, y + 4);
-            }
-        return board;
+
+    private static Color chooseColor(Color previous, UiMessage message) {
+        return JColorChooser.showDialog(null, Language.getUiMessage(message), previous);
     }
 
-    private short[] fillBoardWithDiagonalGliders() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < (1 << SIZE_BITS) - 5; x += 5)
-            for (int y = 0; y < (1 << SIZE_BITS) - 5; y += 5) {
-                changePixel(board, x, y);
-                changePixel(board, x + 1, y + 1);
-                changePixel(board, x + 1, y + 2);
-                changePixel(board, x + 2, y);
-                changePixel(board, x + 2, y + 1);
-            }
-        return board;
-    }
 
-    private short[] randomizeBoard(double threshold) {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < 1 << SIZE_BITS; x++)
-            for (int y = 0; y < 1 << SIZE_BITS; y++) {
-                if (Math.random() < threshold) continue;
-                changePixel(board, x, y);
-            }
-        return board;
-    }
-
-    private static void changePixel(short[] board, int x, int y) {
-        int index = (x & MASK) << SIZE_BITS | y & MASK;
-        board[index >> 1] ^= (short) (1 << (index & 1) * 8);
-    }
-
-    private int texture0, texture1;
+    private int texture0 = 0, texture1 = 0;
 
     private int startX = 0, startY = 0;
     private int cellSize = 1;
     private Color cellColor = Color.WHITE, backColor = Color.BLACK;
-
-    private static final int SIZE_BITS = 10;
-    private static final int MASK = (1 << SIZE_BITS) - 1;
 }

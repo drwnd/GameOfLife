@@ -11,13 +11,20 @@ import core.utils.Message;
 public class SettingsMenu extends CoreSettingsRenderable {
 
     public SettingsMenu() {
+        addOption(OptionSetting.INITIALIZER, UiMessage.GAME_INITIALIZER);
+        addSlider(FloatSetting.RANDOMIZER_THRESHOLD, UiMessage.RANDOMIZER_THRESHOLD);
+        addToggle(ToggleSetting.SIMULATION_RUNNING, UiMessage.TOGGLE_SIMULATION);
+
         addKeySelector(KeySetting.SHIFT_UP, UiMessage.SHIFT_UP);
         addKeySelector(KeySetting.SHIFT_RIGHT, UiMessage.SHIFT_RIGHT);
         addKeySelector(KeySetting.SHIFT_DOWN, UiMessage.SHIFT_DOWN);
         addKeySelector(KeySetting.SHIFT_LEFT, UiMessage.SHIFT_LEFT);
         addKeySelector(KeySetting.ZOOM_IN, UiMessage.ZOOM_IN);
         addKeySelector(KeySetting.ZOOM_OUT, UiMessage.ZOOM_OUT);
-        addToggle(ToggleSetting.SIMULATION_RUNNING, UiMessage.TOGGLE_SIMULATION);
+        addKeySelector(KeySetting.SHIFT_BIGGER_DISTANCE, UiMessage.SHIFT_BIGGER_DISTANCE);
+        addKeySelector(KeySetting.CHANGE_BACKGROUND_COLOR, UiMessage.CHANGE_BACKGROUND_COLOR);
+        addKeySelector(KeySetting.CHANGE_CELL_COLOR, UiMessage.CHANGE_CELL_COLOR);
+        addKeySelector(KeySetting.RESET_BOARD, UiMessage.RESET_BOARD);
 
         addSlider(FloatSetting.GUI_SIZE, UiMessage.GUI_SIZE);
         addSlider(FloatSetting.TEXT_SIZE, UiMessage.TEXT_SIZE);

@@ -4,7 +4,9 @@ public enum FloatSetting {
 
     GUI_SIZE(0.25F, 1.0F, 1.0F, 0.01F),
     TEXT_SIZE(0.5F, 3.0F, 1.0F, 0.01F),
-    RIM_THICKNESS(0.0F, 0.1F, 0.015625F);
+    RIM_THICKNESS(0.0F, 0.1F, 0.015625F),
+
+    RANDOMIZER_THRESHOLD(0.0F, 1.0F, 0.5F);
 
     public static void setIfPresent(String name, String value) {
         try {
