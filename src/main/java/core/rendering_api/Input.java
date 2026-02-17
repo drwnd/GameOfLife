@@ -10,6 +10,7 @@ import static org.lwjgl.glfw.GLFW.*;
 public abstract class Input {
 
     public static final int IS_MOUSE_BUTTON = 0x80000000;
+    public static final int IS_KEYBOARD_BUTTON = 0x00000000;
     public static final int BUTTON_MASK = 0x7FFFFFFF;
 
     protected final Vector2i cursorPos = new Vector2i();

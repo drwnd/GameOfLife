@@ -26,7 +26,8 @@ public enum UiMessage implements StringGetter {
     ZOOM_OUT,
     PAUSE,
     OPEN_SETTINGS,
-    TOGGLE_SIMULATION;
+    TOGGLE_SIMULATION,
+    SHIFT_BIGGER_DISTANCE;
 
     @Override
     public String get() {

@@ -2,11 +2,10 @@ package game;
 
 import core.rendering_api.Input;
 import core.rendering_api.Window;
-import core.settings.KeySetting;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-public class GameInput extends Input {
+public final class GameInput extends Input {
 
     public GameInput(Renderer renderer) {
         this.renderer = renderer;
@@ -24,7 +23,7 @@ public class GameInput extends Input {
 
     @Override
     public void mouseButtonCallback(long window, int button, int action, int mods) {
-
+        renderer.handleInput(button | Input.IS_MOUSE_BUTTON, action);
     }
 
     @Override
@@ -35,7 +34,7 @@ public class GameInput extends Input {
     @Override
     public void keyCallback(long window, int key, int scancode, int action, int mods) {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) glfwSetWindowShouldClose(Window.getWindow(), true);
-        if (key == KeySetting.OPEN_SETTINGS.keybind() && action == GLFW_PRESS) Window.pushRenderable(new SettingsMenu());
+        renderer.handleInput(key | Input.IS_KEYBOARD_BUTTON, action);
     }
 
     @Override

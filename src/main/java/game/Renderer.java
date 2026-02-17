@@ -2,17 +2,20 @@ package game;
 
 import core.assets.AssetManager;
 import core.renderables.Renderable;
+import core.rendering_api.Input;
 import core.rendering_api.Window;
 import core.rendering_api.shaders.ComputeShader;
 import core.rendering_api.shaders.GuiShader;
+import core.settings.KeySetting;
 import core.settings.ToggleSetting;
 import org.joml.Vector2f;
 
 import java.awt.*;
 
+import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.opengl.GL46.*;
 
-public class Renderer extends Renderable {
+public final class Renderer extends Renderable {
 
     public Renderer() {
         super(new Vector2f(1.0F), new Vector2f(0.0F));
@@ -21,17 +24,33 @@ public class Renderer extends Renderable {
         texture1 = genTexture(randomizeBoard(0.25));
     }
 
-    private int genTexture(short[] data) {
-        int texture = glGenTextures();
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 1 << SIZE_BITS, 1 << SIZE_BITS, 0, GL_RED, GL_UNSIGNED_BYTE, data);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        return texture;
+
+    public void handleInput(int button, int action) {
+        if (action != GLFW_PRESS) return;
+        if (button == KeySetting.OPEN_SETTINGS.keybind()) Window.pushRenderable(new SettingsMenu());
+        if (button == KeySetting.ZOOM_IN.keybind()) incCellSize();
+        if (button == KeySetting.ZOOM_OUT.keybind()) decCellSize();
+        if (button == KeySetting.SHIFT_RIGHT.keybind()) addStart(Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? 256 : 128, 0);
+        if (button == KeySetting.SHIFT_LEFT.keybind()) addStart(Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? -256 : -128, 0);
+        if (button == KeySetting.SHIFT_UP.keybind()) addStart(0, Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? 256 : 128);
+        if (button == KeySetting.SHIFT_DOWN.keybind()) addStart(0, Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? -256 : -128);
     }
+
+    public void incCellSize() {
+        if (cellSize == 1 << 6) return;
+        cellSize <<= 1;
+    }
+
+    public void decCellSize() {
+        if (cellSize == 1) return;
+        cellSize >>= 1;
+    }
+
+    public void addStart(int x, int y) {
+        startX += x / cellSize;
+        startY += y / cellSize;
+    }
+
 
     @Override
     public void setOnTop() {
@@ -40,7 +59,7 @@ public class Renderer extends Renderable {
 
     @Override
     public void renderSelf(Vector2f position, Vector2f size) {
-        
+
         if (ToggleSetting.SIMULATION_RUNNING.value()) {
             ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE);
             computeShader.bind();
@@ -50,12 +69,15 @@ public class Renderer extends Renderable {
             glDispatchCompute(1 << SIZE_BITS - 3, 1 << SIZE_BITS - 3, 1);
             glMemoryBarrier(GL_ALL_BARRIER_BITS);
         }
-        
+
         GuiShader shader = (GuiShader) AssetManager.get(Shaders.RENDERING);
         shader.bind();
 
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture1);
+
         shader.setUniform("board", 0);
-        shader.setUniform("start", startX, startY);
+        shader.setUniform("start", (float) startX, startY);
         shader.setUniform("viewSize", getSizeX(), getSizeY());
         shader.setUniform("boardSize", 1 << SIZE_BITS);
         shader.setUniform("cellColor", cellColor);
@@ -73,12 +95,24 @@ public class Renderer extends Renderable {
     }
 
 
+    private int genTexture(short[] data) {
+        int texture = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 1 << SIZE_BITS, 1 << SIZE_BITS, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        return texture;
+    }
+
     private float getSizeX() {
-        return (float) sizeX / (cellSize * 2);
+        return (float) Window.getWidth() / cellSize;
     }
 
     private float getSizeY() {
-        return (float) sizeY / (cellSize * 2);
+        return (float) Window.getHeight() / cellSize;
     }
 
     private short[] fillBoardWithSmallStraightGliders() {
@@ -149,8 +183,7 @@ public class Renderer extends Renderable {
 
     private int texture0, texture1;
 
-    private float startX = 0.0F, startY = 0.0F;
-    private int sizeX = 1500, sizeY = 1000;
+    private int startX = 0, startY = 0;
     private int cellSize = 1;
     private Color cellColor = Color.WHITE, backColor = Color.BLACK;
 
