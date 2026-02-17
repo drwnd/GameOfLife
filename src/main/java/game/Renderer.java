@@ -1,8 +1,6 @@
 package game;
 
 import core.assets.AssetManager;
-import core.languages.Language;
-import core.languages.UiMessage;
 import core.renderables.Renderable;
 import core.rendering_api.Input;
 import core.rendering_api.Window;
@@ -12,9 +10,11 @@ import core.settings.KeySetting;
 import core.settings.OptionSetting;
 import core.settings.ToggleSetting;
 import org.joml.Vector2f;
+import org.joml.Vector2i;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL46.*;
@@ -43,8 +43,7 @@ public final class Renderer extends Renderable {
         if (button == KeySetting.SHIFT_DOWN.keybind()) addStart(0, Input.isKeyPressed(KeySetting.SHIFT_BIGGER_DISTANCE) ? -256 : -128);
         if (button == KeySetting.RESET_BOARD.keybind()) resetBoard();
 
-//        if (button == KeySetting.CHANGE_BACKGROUND_COLOR.keybind()) backColor = chooseColor(backColor, UiMessage.CHANGE_BACKGROUND_COLOR);
-//        if (button == KeySetting.CHANGE_CELL_COLOR.keybind()) cellColor = chooseColor(cellColor, UiMessage.CHANGE_CELL_COLOR);
+        if (button == (GLFW_MOUSE_BUTTON_LEFT | Input.IS_MOUSE_BUTTON)) change(Input.getCursorPos());
     }
 
     public void incCellSize() {
@@ -80,6 +79,18 @@ public final class Renderer extends Renderable {
             glDispatchCompute(1 << SIZE_BITS - 3, 1 << SIZE_BITS - 3, 1);
             glMemoryBarrier(GL_ALL_BARRIER_BITS);
         }
+
+        ComputeShader changeShader = (ComputeShader) AssetManager.get(Shaders.CHANGE_CELL);
+        changeShader.bind();
+
+        glBindImageTexture(0, texture1, 0, false, 0, GL_READ_WRITE, GL_R8);
+        while (!toChangePixels.isEmpty()) {
+            Vector2i pixelCoordinate = toChangePixels.removeLast();
+            changeShader.setUniform("position", pixelCoordinate.x, pixelCoordinate.y);
+            glDispatchCompute(1, 1, 1);
+            glMemoryBarrier(GL_ALL_BARRIER_BITS);
+        }
+
 
         GuiShader shader = (GuiShader) AssetManager.get(Shaders.RENDERING);
         shader.bind();
@@ -135,9 +146,13 @@ public final class Renderer extends Renderable {
         texture1 = genTexture(initializer.getInitializedBoard());
     }
 
+    private void change(Vector2i cursorPos) {
+        if (ToggleSetting.SIMULATION_RUNNING.value()) return;
 
-    private static Color chooseColor(Color previous, UiMessage message) {
-        return JColorChooser.showDialog(null, Language.getUiMessage(message), previous);
+        int x = startX + cursorPos.x / cellSize & MASK;
+        int y = startY + cursorPos.y / cellSize & MASK;
+
+        toChangePixels.add(new Vector2i(x, y));
     }
 
 
@@ -145,5 +160,7 @@ public final class Renderer extends Renderable {
 
     private int startX = 0, startY = 0;
     private int cellSize = 1;
-    private Color cellColor = Color.WHITE, backColor = Color.BLACK;
+    private final Color cellColor = Color.WHITE, backColor = Color.BLACK;
+
+    private final ArrayList<Vector2i> toChangePixels = new ArrayList<>();
 }

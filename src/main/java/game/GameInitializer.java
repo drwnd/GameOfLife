@@ -9,7 +9,7 @@ import static game.Renderer.SIZE_BITS;
 public enum GameInitializer implements Option {
 
     RANDOM(() -> randomizeBoard(FloatSetting.RANDOMIZER_THRESHOLD.value())),
-    EMPTY(() -> null),
+    EMPTY(GameInitializer::getEmptyBoard),
     VERTICAL_STRIPES(GameInitializer::fillBoardWidthVerticalStripes),
     HORIZONTAL_STRIPES(GameInitializer::fillBoardWidthHorizontalStripes),
     DIAGONAL_GLIDERS(GameInitializer::fillBoardWithDiagonalGliders),
@@ -25,6 +25,9 @@ public enum GameInitializer implements Option {
         return initializer.getInitializedBoard();
     }
 
+    private static short[] getEmptyBoard() {
+        return null;
+    }
 
     private static short[] fillBoardWidthVerticalStripes() {
         short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];

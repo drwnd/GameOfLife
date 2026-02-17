@@ -13,7 +13,7 @@ public final class GameInput extends Input {
 
     @Override
     public void setInputMode() {
-
+        setStandardInputMode();
     }
 
     @Override
