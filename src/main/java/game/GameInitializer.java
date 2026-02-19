@@ -3,6 +3,8 @@ package game;
 import core.settings.FloatSetting;
 import core.settings.optionSettings.Option;
 
+import java.util.Arrays;
+
 import static game.Renderer.MASK;
 import static game.Renderer.SIZE_BITS;
 
@@ -21,32 +23,35 @@ public enum GameInitializer implements Option {
         this.initializer = initializer;
     }
 
-    public short[] getInitializedBoard() {
+    public int[] getInitializedBoard() {
         return initializer.getInitializedBoard();
     }
 
-    private static short[] getEmptyBoard() {
+    private static int[] getEmptyBoard() {
         return null;
     }
 
-    private static short[] fillBoardWidthVerticalStripes() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < 1 << SIZE_BITS; x++)
-            for (int y = 0; y < 1 << SIZE_BITS; y += 2) changePixel(board, x, y);
+    private static int[] fillBoardWidthHorizontalStripes() {
+        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+
+        for (int y = 0; y < 1 << SIZE_BITS; y += 2)
+            for (int x = 0; x < 1 << SIZE_BITS; x++) changePixel(board, x, y);
         return board;
     }
 
-    private static short[] fillBoardWidthHorizontalStripes() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < 1 << SIZE_BITS; x += 2)
-            for (int y = 0; y < 1 << SIZE_BITS; y++) changePixel(board, x, y);
+    private static int[] fillBoardWidthVerticalStripes() {
+        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+
+        for (int y = 0; y < 1 << SIZE_BITS; y++)
+            for (int x = 0; x < 1 << SIZE_BITS; x += 2) changePixel(board, x, y);
         return board;
     }
 
-    private static short[] fillBoardWithSmallStraightGliders() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < (1 << SIZE_BITS) - 7; x += 7)
-            for (int y = 0; y < (1 << SIZE_BITS) - 6; y += 6) {
+    private static int[] fillBoardWithSmallStraightGliders() {
+        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+
+        for (int y = 0; y < (1 << SIZE_BITS) - 6; y += 6)
+            for (int x = 0; x < (1 << SIZE_BITS) - 7; x += 7) {
                 changePixel(board, x, y);
                 changePixel(board, x + 3, y);
                 changePixel(board, x, y + 2);
@@ -60,10 +65,11 @@ public enum GameInitializer implements Option {
         return board;
     }
 
-    private static short[] fillBoardWithStraightGliders() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < (1 << SIZE_BITS) - 9; x += 9)
-            for (int y = 0; y < (1 << SIZE_BITS) - 7; y += 7) {
+    private static int[] fillBoardWithStraightGliders() {
+        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+
+        for (int y = 0; y < (1 << SIZE_BITS) - 7; y += 7)
+            for (int x = 0; x < (1 << SIZE_BITS) - 9; x += 9) {
                 changePixel(board, x + 2, y);
                 changePixel(board, x + 3, y);
                 changePixel(board, x, y + 1);
@@ -81,10 +87,11 @@ public enum GameInitializer implements Option {
         return board;
     }
 
-    private static short[] fillBoardWithDiagonalGliders() {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < (1 << SIZE_BITS) - 5; x += 5)
-            for (int y = 0; y < (1 << SIZE_BITS) - 5; y += 5) {
+    private static int[] fillBoardWithDiagonalGliders() {
+        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+
+        for (int y = 0; y < (1 << SIZE_BITS) - 5; y += 5)
+            for (int x = 0; x < (1 << SIZE_BITS) - 5; x += 5) {
                 changePixel(board, x, y);
                 changePixel(board, x + 1, y + 1);
                 changePixel(board, x + 1, y + 2);
@@ -94,25 +101,28 @@ public enum GameInitializer implements Option {
         return board;
     }
 
-    private static short[] randomizeBoard(double threshold) {
-        short[] board = new short[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 2];
-        for (int x = 0; x < 1 << SIZE_BITS; x++)
-            for (int y = 0; y < 1 << SIZE_BITS; y++) {
+    private static int[] randomizeBoard(double threshold) {
+        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+
+        for (int y = 0; y < 1 << SIZE_BITS; y++)
+            for (int x = 0; x < 1 << SIZE_BITS; x++) {
                 if (Math.random() < threshold) continue;
                 changePixel(board, x, y);
             }
+
+        Arrays.fill(board, -1);
         return board;
     }
 
-    private static void changePixel(short[] board, int x, int y) {
-        int index = (x & MASK) << SIZE_BITS | y & MASK;
-        board[index >> 1] ^= (short) (1 << (index & 1) * 8);
+    private static void changePixel(int[] board, int x, int y) {
+        int index = (y & MASK) << SIZE_BITS | x & MASK;
+        board[index >> 5] ^= 1 << index;
     }
 
 
     private final BoardInitializer initializer;
 
     private interface BoardInitializer {
-        short[] getInitializedBoard();
+        int[] getInitializedBoard();
     }
 }

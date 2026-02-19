@@ -1,33 +1,84 @@
 #version 460 core
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout (local_size_x = 1, local_size_y = 64, local_size_z = 1) in;
 
-layout (r8, binding = 0) writeonly restrict uniform image2D destination;
-layout (r8, binding = 1) readonly restrict uniform image2D source;
+layout (r32ui, binding = 0) writeonly restrict uniform uimage2D destination;
+layout (r32ui, binding = 1) readonly restrict uniform uimage2D source;
 
 uniform int mask;
 
-int valueAt(ivec2 position) {
-    float value = imageLoad(source, position & mask).r;
-    return value == 0.0 ? 0 : 1;
+struct Region {
+    uint topLeft;
+    uint top;
+    uint topRight;
+    uint left;
+    uint center;
+    uint right;
+    uint bottomLeft;
+    uint bottom;
+    uint bottomRight;
+};
+
+uint valueAt(ivec2 position) {
+    return imageLoad(source, position & ivec2(mask >> 5, mask)).r;
 }
+
+Region sampleRegion(ivec2 texelCoord) {
+    uint topLeft = valueAt(texelCoord + ivec2(-1, 1));
+    uint top = valueAt(texelCoord + ivec2(0, 1));
+    uint topRight = valueAt(texelCoord + ivec2(1, 1));
+
+    uint left = valueAt(texelCoord + ivec2(-1, 0));
+    uint center = valueAt(texelCoord);
+    uint right = valueAt(texelCoord + ivec2(1, 0));
+
+    uint bottomLeft = valueAt(texelCoord + ivec2(-1, -1));
+    uint bottom = valueAt(texelCoord + ivec2(0, -1));
+    uint bottomRight = valueAt(texelCoord + ivec2(1, -1));
+
+    return Region(topLeft, top, topRight, left, center, right, bottomLeft, bottom, bottomRight);
+}
+
+uint getFromRegion(Region region, int x, int y) {
+    if (x == -1) {
+        if (y == -1) return region.bottomLeft >> 31 & 1;
+        if (y == 0) return region.left >> 31 & 1;
+        return region.topLeft >> 31 & 1;
+    }
+
+    if (x == 32) {
+        if (y == -1) return region.bottomRight & 1;
+        if (y == 0) return region.right & 1;
+        return region.topRight & 1;
+    }
+
+    if (y == -1) return region.bottom >> x & 1;
+    if (y == 0) return region.center >> x & 1;
+    return region.top >> x & 1;
+}
+
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+    Region region = sampleRegion(texelCoord);
+    uint result = 0;
 
-    int counter = valueAt(texelCoord) << 4;
+    for (int x = 0; x < 32; x++) {
+        uint counter = getFromRegion(region, x, 0) << 4;
 
-    counter += valueAt(texelCoord + ivec2(-1, -1));
-    counter += valueAt(texelCoord + ivec2(0, -1));
-    counter += valueAt(texelCoord + ivec2(1, -1));
+        counter += getFromRegion(region, x - 1, 1);
+        counter += getFromRegion(region, x + 0, 1);
+        counter += getFromRegion(region, x + 1, 1);
 
-    counter += valueAt(texelCoord + ivec2(-1, 0));
-    counter += valueAt(texelCoord + ivec2(1, 0));
+        counter += getFromRegion(region, x - 1, 0);
+        counter += getFromRegion(region, x + 1, 0);
 
-    counter += valueAt(texelCoord + ivec2(-1, 1));
-    counter += valueAt(texelCoord + ivec2(0, 1));
-    counter += valueAt(texelCoord + ivec2(1, 1));
+        counter += getFromRegion(region, x - 1, -1);
+        counter += getFromRegion(region, x + 0, -1);
+        counter += getFromRegion(region, x + 1, -1);
 
-    int result = (0xc0008 >> counter & 1);
-    imageStore(destination, texelCoord, vec4(result));
+        result |= (0xc0008 >> counter & 1) << x;
+    }
+
+    imageStore(destination, texelCoord, uvec4(result));
 }
