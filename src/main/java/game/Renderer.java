@@ -74,16 +74,16 @@ public final class Renderer extends Renderable {
             ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE);
             computeShader.bind();
             computeShader.setUniform("mask", MASK);
-            glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
-            glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
-            glDispatchCompute(1 << SIZE_BITS - 5, 1 << SIZE_BITS - 6, 1);
+            glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R8UI);
+            glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R8UI);
+            glDispatchCompute(1 << SIZE_BITS - 3, 1 << SIZE_BITS - 3, 1);
             glMemoryBarrier(GL_ALL_BARRIER_BITS);
         }
 
         ComputeShader changeShader = (ComputeShader) AssetManager.get(Shaders.CHANGE_CELL);
         changeShader.bind();
 
-        glBindImageTexture(0, texture1, 0, false, 0, GL_READ_WRITE, GL_R32I);
+        glBindImageTexture(0, texture1, 0, false, 0, GL_READ_WRITE, GL_R8UI);
         while (!toChangePixels.isEmpty()) {
             Vector2i pixelCoordinate = toChangePixels.removeLast();
             changeShader.setUniform("position", pixelCoordinate.x, pixelCoordinate.y);
@@ -120,7 +120,7 @@ public final class Renderer extends Renderable {
     private static int genTexture(int[] data) {
         int texture = glGenTextures();
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, 1 << SIZE_BITS - 5, 1 << SIZE_BITS, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 1 << SIZE_BITS, 1 << SIZE_BITS, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);

@@ -13,10 +13,9 @@ uniform vec3 backColor;
 
 void main() {
     vec2 position = start + viewSize * fragTextureCoordinate;
-    int x = int(floor(position.x));
 
     int value = texture(board, position / boardSize).r;
-    vec3 color = (value >> x & 1) == 0 ? backColor : cellColor;
+    vec3 color = value == 0 ? backColor : cellColor;
 
     fragColor = vec4(color, 1.0);
 }
