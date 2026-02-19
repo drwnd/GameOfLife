@@ -21,7 +21,7 @@ import static org.lwjgl.opengl.GL46.*;
 
 public final class Renderer extends Renderable {
 
-    public static final int SIZE_BITS = 10;
+    public static final int SIZE_BITS = 15;
     public static final int MASK = (1 << SIZE_BITS) - 1;
 
 
