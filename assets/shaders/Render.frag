@@ -16,7 +16,7 @@ void main() {
     int x = int(floor(position.x));
 
     int value = texture(board, position / boardSize).r;
-    vec3 color = (value >> x & 1) == 0 ? backColor : cellColor;
+    vec3 color = (value >> (x & 7) & 1) == 0 ? backColor : cellColor;
 
     fragColor = vec4(color, 1.0);
 }
