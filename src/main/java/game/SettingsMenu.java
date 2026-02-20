@@ -12,6 +12,7 @@ public class SettingsMenu extends CoreSettingsRenderable {
 
     public SettingsMenu() {
         addOption(OptionSetting.INITIALIZER, UiMessage.GAME_INITIALIZER);
+        addSlider(FloatSetting.SIZE_BITS, UiMessage.SIZE_BITS);
         addSlider(FloatSetting.RANDOMIZER_THRESHOLD, UiMessage.RANDOMIZER_THRESHOLD);
         addToggle(ToggleSetting.SIMULATION_RUNNING, UiMessage.TOGGLE_SIMULATION);
         addOption(OptionSetting.BACKGROUND_COLOR, UiMessage.BACKGROUND_COLOR);

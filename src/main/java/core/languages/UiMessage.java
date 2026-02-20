@@ -32,7 +32,8 @@ public enum UiMessage implements StringGetter {
     CELL_COLOR,
     RESET_BOARD,
     RANDOMIZER_THRESHOLD,
-    GAME_INITIALIZER;
+    GAME_INITIALIZER,
+    SIZE_BITS;
 
     @Override
     public String get() {

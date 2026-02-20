@@ -30,7 +30,7 @@ public enum GameInitializer implements Option {
     }
 
     private static int[] fillBoardWidthHorizontalStripes() {
-        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+        int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
 
         for (int y = 0; y < 1 << SIZE_BITS; y += 2)
             for (int x = 0; x < 1 << SIZE_BITS; x++) changePixel(board, x, y);
@@ -38,7 +38,7 @@ public enum GameInitializer implements Option {
     }
 
     private static int[] fillBoardWidthVerticalStripes() {
-        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+        int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
 
         for (int y = 0; y < 1 << SIZE_BITS; y++)
             for (int x = 0; x < 1 << SIZE_BITS; x += 2) changePixel(board, x, y);
@@ -46,7 +46,7 @@ public enum GameInitializer implements Option {
     }
 
     private static int[] fillBoardWithSmallStraightGliders() {
-        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+        int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
 
         for (int y = 0; y < (1 << SIZE_BITS) - 6; y += 6)
             for (int x = 0; x < (1 << SIZE_BITS) - 7; x += 7) {
@@ -64,7 +64,7 @@ public enum GameInitializer implements Option {
     }
 
     private static int[] fillBoardWithStraightGliders() {
-        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+        int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
 
         for (int y = 0; y < (1 << SIZE_BITS) - 7; y += 7)
             for (int x = 0; x < (1 << SIZE_BITS) - 9; x += 9) {
@@ -86,7 +86,7 @@ public enum GameInitializer implements Option {
     }
 
     private static int[] fillBoardWithDiagonalGliders() {
-        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+        int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
 
         for (int y = 0; y < (1 << SIZE_BITS) - 5; y += 5)
             for (int x = 0; x < (1 << SIZE_BITS) - 5; x += 5) {
@@ -100,7 +100,7 @@ public enum GameInitializer implements Option {
     }
 
     private static int[] randomizeBoard(double threshold) {
-        int[] board = new int[(1 << SIZE_BITS) * (1 << SIZE_BITS) / 32];
+        int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
 
         for (int y = 0; y < 1 << SIZE_BITS; y++)
             for (int x = 0; x < 1 << SIZE_BITS; x++) {
@@ -111,8 +111,8 @@ public enum GameInitializer implements Option {
     }
 
     private static void changePixel(int[] board, int x, int y) {
-        int index = (y & MASK) << SIZE_BITS | x & MASK;
-        board[index >> 5] ^= 1 << index;
+        int index = (y & MASK) << SIZE_BITS - 5 | (x >> 5) & MASK;
+        board[index] ^= 1 << x;
     }
 
 

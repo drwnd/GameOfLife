@@ -26,3 +26,4 @@ Cell Color
 Reset Board
 Randomizer Threshold
 Game Initializer
+Size Bits (n -> 2^n Board size)

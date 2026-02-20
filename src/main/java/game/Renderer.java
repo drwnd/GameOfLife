@@ -6,6 +6,7 @@ import core.rendering_api.Input;
 import core.rendering_api.Window;
 import core.rendering_api.shaders.ComputeShader;
 import core.rendering_api.shaders.GuiShader;
+import core.settings.FloatSetting;
 import core.settings.KeySetting;
 import core.settings.OptionSetting;
 import core.settings.ToggleSetting;
@@ -22,9 +23,8 @@ import static org.lwjgl.opengl.GL46.*;
 
 public final class Renderer extends Renderable {
 
-    public static final int SIZE_BITS = 15;
-    public static final int MASK = (1 << SIZE_BITS) - 1;
-
+    public static int SIZE_BITS;
+    public static int MASK;
 
     public Renderer() {
         super(new Vector2f(1.0F), new Vector2f(0.0F));
@@ -145,6 +145,9 @@ public final class Renderer extends Renderable {
     }
 
     private void resetBoard() {
+        SIZE_BITS = (int) FloatSetting.SIZE_BITS.value();
+        MASK = (1 << SIZE_BITS) - 1;
+
         if (texture0 != 0) glDeleteTextures(texture0);
         if (texture1 != 0) glDeleteTextures(texture1);
 

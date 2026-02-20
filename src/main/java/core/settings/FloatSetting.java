@@ -6,6 +6,7 @@ public enum FloatSetting {
     TEXT_SIZE(0.5F, 3.0F, 1.0F, 0.01F),
     RIM_THICKNESS(0.0F, 0.1F, 0.015625F),
 
+    SIZE_BITS(6, 15, 12, 1),
     RANDOMIZER_THRESHOLD(0.0F, 1.0F, 0.5F);
 
     public static void setIfPresent(String name, String value) {
