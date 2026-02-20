@@ -69,11 +69,14 @@ public final class Renderer extends Renderable {
 
     @Override
     public void setOnTop() {
-        Window.setInput(new GameInput(this));
+        Window.setInput(input = new GameInput(this));
     }
 
     @Override
     public void renderSelf(Vector2f position, Vector2f size) {
+        Vector2i movement = input.getCursorMovement();
+        if (Input.isKeyPressed(GLFW_MOUSE_BUTTON_LEFT | Input.IS_MOUSE_BUTTON)
+                || Input.isKeyPressed(GLFW_MOUSE_BUTTON_RIGHT | Input.IS_MOUSE_BUTTON)) addStart(-movement.x, -movement.y);
 
         if (ToggleSetting.SIMULATION_RUNNING.value()) {
             ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE);
@@ -164,5 +167,6 @@ public final class Renderer extends Renderable {
     private int startX = 0, startY = 0;
     private float cellSize = 1;
 
+    private GameInput input;
     private final ArrayList<Vector2i> toChangePixels = new ArrayList<>();
 }

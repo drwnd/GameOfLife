@@ -2,6 +2,7 @@ package game;
 
 import core.rendering_api.Input;
 import core.rendering_api.Window;
+import org.joml.Vector2i;
 
 import static org.lwjgl.glfw.GLFW.*;
 
@@ -18,7 +19,7 @@ public final class GameInput extends Input {
 
     @Override
     public void cursorPosCallback(long window, double xPos, double yPos) {
-
+        standardCursorPosCallBack(xPos, yPos);
     }
 
     @Override
@@ -42,5 +43,12 @@ public final class GameInput extends Input {
 
     }
 
+    public Vector2i getCursorMovement() {
+        Vector2i movement = new Vector2i(cursorPos).sub(lastCursorPos);
+        lastCursorPos.set(cursorPos);
+        return movement;
+    }
+
     private final Renderer renderer;
+    private final Vector2i lastCursorPos = new Vector2i(0, 0);
 }
