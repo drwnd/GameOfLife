@@ -9,6 +9,7 @@ import core.rendering_api.shaders.GuiShader;
 import core.settings.KeySetting;
 import core.settings.OptionSetting;
 import core.settings.ToggleSetting;
+import core.settings.optionSettings.ColorOption;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 
@@ -47,18 +48,22 @@ public final class Renderer extends Renderable {
     }
 
     public void incCellSize() {
-        if (cellSize == 1 << 6) return;
-        cellSize <<= 1;
+        if (cellSize == 64.0F) return;
+        cellSize *= 2.0F;
+
+        addStart(Window.getWidth() / 2, Window.getHeight() / 2);
     }
 
     public void decCellSize() {
-        if (cellSize == 1) return;
-        cellSize >>= 1;
+        if (cellSize == 0.015625f) return;
+        cellSize *= 0.5F;
+
+        addStart(-Window.getWidth() / 4, -Window.getHeight() / 4);
     }
 
     public void addStart(int x, int y) {
-        startX += x / cellSize;
-        startY += y / cellSize;
+        startX += (int) (x / cellSize);
+        startY += (int) (y / cellSize);
     }
 
 
@@ -102,8 +107,8 @@ public final class Renderer extends Renderable {
         shader.setUniform("start", (float) startX, startY);
         shader.setUniform("viewSize", getSizeX(), getSizeY());
         shader.setUniform("boardSize", 1 << SIZE_BITS);
-        shader.setUniform("cellColor", cellColor);
-        shader.setUniform("backColor", backColor);
+        shader.setUniform("cellColor", ((ColorOption) OptionSetting.CELL_COLOR.value()).getColor());
+        shader.setUniform("backColor", ((ColorOption) OptionSetting.BACKGROUND_COLOR.value()).getColor());
 
         shader.flipNextDrawVertically();
         shader.drawFullScreenQuad();
@@ -123,7 +128,6 @@ public final class Renderer extends Renderable {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, 1 << SIZE_BITS - 5, 1 << SIZE_BITS, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         return texture;
@@ -149,18 +153,16 @@ public final class Renderer extends Renderable {
     private void change(Vector2i cursorPos) {
         if (ToggleSetting.SIMULATION_RUNNING.value()) return;
 
-        int x = startX + cursorPos.x / cellSize & MASK;
-        int y = startY + cursorPos.y / cellSize & MASK;
+        int x = (int) (startX + cursorPos.x / cellSize) & MASK;
+        int y = (int) (startY + cursorPos.y / cellSize) & MASK;
 
         toChangePixels.add(new Vector2i(x, y));
     }
 
 
     private int texture0 = 0, texture1 = 0;
-
     private int startX = 0, startY = 0;
-    private int cellSize = 1;
-    private final Color cellColor = Color.WHITE, backColor = Color.BLACK;
+    private float cellSize = 1;
 
     private final ArrayList<Vector2i> toChangePixels = new ArrayList<>();
 }

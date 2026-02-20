@@ -14,6 +14,8 @@ public class SettingsMenu extends CoreSettingsRenderable {
         addOption(OptionSetting.INITIALIZER, UiMessage.GAME_INITIALIZER);
         addSlider(FloatSetting.RANDOMIZER_THRESHOLD, UiMessage.RANDOMIZER_THRESHOLD);
         addToggle(ToggleSetting.SIMULATION_RUNNING, UiMessage.TOGGLE_SIMULATION);
+        addOption(OptionSetting.BACKGROUND_COLOR, UiMessage.BACKGROUND_COLOR);
+        addOption(OptionSetting.CELL_COLOR, UiMessage.CELL_COLOR);
 
         addKeySelector(KeySetting.SHIFT_UP, UiMessage.SHIFT_UP);
         addKeySelector(KeySetting.SHIFT_RIGHT, UiMessage.SHIFT_RIGHT);
@@ -22,8 +24,6 @@ public class SettingsMenu extends CoreSettingsRenderable {
         addKeySelector(KeySetting.ZOOM_IN, UiMessage.ZOOM_IN);
         addKeySelector(KeySetting.ZOOM_OUT, UiMessage.ZOOM_OUT);
         addKeySelector(KeySetting.SHIFT_BIGGER_DISTANCE, UiMessage.SHIFT_BIGGER_DISTANCE);
-        addKeySelector(KeySetting.CHANGE_BACKGROUND_COLOR, UiMessage.CHANGE_BACKGROUND_COLOR);
-        addKeySelector(KeySetting.CHANGE_CELL_COLOR, UiMessage.CHANGE_CELL_COLOR);
         addKeySelector(KeySetting.RESET_BOARD, UiMessage.RESET_BOARD);
 
         addSlider(FloatSetting.GUI_SIZE, UiMessage.GUI_SIZE);

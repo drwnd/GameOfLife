@@ -10,7 +10,9 @@ public enum OptionSetting {
     LANGUAGE(new Language("English")),
     TEXTURE_PACK(new TexturePack("Default")),
 
-    INITIALIZER(GameInitializer.RANDOM);
+    INITIALIZER(GameInitializer.RANDOM),
+    CELL_COLOR(ColorOption.WHITE),
+    BACKGROUND_COLOR(ColorOption.BLACK);
 
     public static void setIfPresent(String name, String value) {
         try {

@@ -3,8 +3,6 @@ package game;
 import core.settings.FloatSetting;
 import core.settings.optionSettings.Option;
 
-import java.util.Arrays;
-
 import static game.Renderer.MASK;
 import static game.Renderer.SIZE_BITS;
 
@@ -109,8 +107,6 @@ public enum GameInitializer implements Option {
                 if (Math.random() < threshold) continue;
                 changePixel(board, x, y);
             }
-
-        Arrays.fill(board, -1);
         return board;
     }
 
