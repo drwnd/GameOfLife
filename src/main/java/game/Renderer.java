@@ -78,7 +78,15 @@ public final class Renderer extends Renderable {
         if (Input.isKeyPressed(GLFW_MOUSE_BUTTON_LEFT | Input.IS_MOUSE_BUTTON)
                 || Input.isKeyPressed(GLFW_MOUSE_BUTTON_RIGHT | Input.IS_MOUSE_BUTTON)) addStart(-movement.x, -movement.y);
 
-        if (ToggleSetting.SIMULATION_RUNNING.value()) {
+        long currentTime = System.nanoTime();
+        long nanoTimeBetweenGenerations = (long) (1_000_000_000F / FloatSetting.MAX_GENERATIONS_PER_SECOND.value());
+        long nanoTimeSinceLastGeneration = currentTime - lastGenerationNanoTime;
+
+        boolean shouldRunGeneration = nanoTimeSinceLastGeneration > nanoTimeBetweenGenerations;
+        shouldRunGeneration = shouldRunGeneration && ToggleSetting.SIMULATION_RUNNING.value();
+
+        if (shouldRunGeneration) {
+            lastGenerationNanoTime = currentTime;
             ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE);
             computeShader.bind();
             computeShader.setUniform("mask", MASK);
@@ -117,7 +125,7 @@ public final class Renderer extends Renderable {
         shader.drawFullScreenQuad();
 
 
-        if (ToggleSetting.SIMULATION_RUNNING.value()) {
+        if (shouldRunGeneration) {
             int temp = texture0;
             texture0 = texture1;
             texture1 = temp;
@@ -169,6 +177,7 @@ public final class Renderer extends Renderable {
     private int texture0 = 0, texture1 = 0;
     private int startX = 0, startY = 0;
     private float cellSize = 1;
+    private long lastGenerationNanoTime = System.nanoTime();
 
     private GameInput input;
     private final ArrayList<Vector2i> toChangePixels = new ArrayList<>();

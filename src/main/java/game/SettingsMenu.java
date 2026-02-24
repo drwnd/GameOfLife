@@ -8,11 +8,12 @@ import core.settings.OptionSetting;
 import core.settings.ToggleSetting;
 import core.utils.Message;
 
-public class SettingsMenu extends CoreSettingsRenderable {
+public final class SettingsMenu extends CoreSettingsRenderable {
 
     public SettingsMenu() {
         addOption(OptionSetting.INITIALIZER, UiMessage.GAME_INITIALIZER);
         addSlider(FloatSetting.SIZE_BITS, UiMessage.SIZE_BITS);
+        addSlider(FloatSetting.MAX_GENERATIONS_PER_SECOND, UiMessage.MAX_GENERATIONS_PER_SECOND);
         addSlider(FloatSetting.RANDOMIZER_THRESHOLD, UiMessage.RANDOMIZER_THRESHOLD);
         addToggle(ToggleSetting.SIMULATION_RUNNING, UiMessage.TOGGLE_SIMULATION);
         addOption(OptionSetting.BACKGROUND_COLOR, UiMessage.BACKGROUND_COLOR);
