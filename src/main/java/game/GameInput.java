@@ -29,7 +29,8 @@ public final class GameInput extends Input {
 
     @Override
     public void scrollCallback(long window, double xScroll, double yScroll) {
-
+        if (yScroll > 0) renderer.incCellSize();
+        else renderer.decCellSize();
     }
 
     @Override

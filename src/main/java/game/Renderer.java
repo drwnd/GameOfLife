@@ -75,7 +75,7 @@ public final class Renderer extends Renderable {
     @Override
     public void renderSelf(Vector2f position, Vector2f size) {
         Vector2i movement = input.getCursorMovement();
-        if (Input.isKeyPressed(GLFW_MOUSE_BUTTON_LEFT | Input.IS_MOUSE_BUTTON)
+        if (Input.isKeyPressed(GLFW_MOUSE_BUTTON_LEFT | Input.IS_MOUSE_BUTTON) && ToggleSetting.SIMULATION_RUNNING.value()
                 || Input.isKeyPressed(GLFW_MOUSE_BUTTON_RIGHT | Input.IS_MOUSE_BUTTON)) addStart(-movement.x, -movement.y);
 
         long currentTime = System.nanoTime();
