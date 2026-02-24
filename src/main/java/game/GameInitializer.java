@@ -14,7 +14,8 @@ public enum GameInitializer implements Option {
     HORIZONTAL_STRIPES(GameInitializer::fillBoardWidthHorizontalStripes),
     DIAGONAL_GLIDERS(GameInitializer::fillBoardWithDiagonalGliders),
     STRAIGHT_GLIDERS(GameInitializer::fillBoardWithStraightGliders),
-    SMALL_STRAIGHT_GLIDERS(GameInitializer::fillBoardWithSmallStraightGliders);
+    SMALL_STRAIGHT_GLIDERS(GameInitializer::fillBoardWithSmallStraightGliders),
+    SQUARES(GameInitializer::fillBoardWidthSquares);
 
 
     GameInitializer(BoardInitializer initializer) {
@@ -95,6 +96,19 @@ public enum GameInitializer implements Option {
                 changePixel(board, x + 1, y + 2);
                 changePixel(board, x + 2, y);
                 changePixel(board, x + 2, y + 1);
+            }
+        return board;
+    }
+
+    private static int[] fillBoardWidthSquares() {
+        int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
+
+        for (int y = 0; y < (1 << SIZE_BITS) - 3; y += 3)
+            for (int x = 0; x < (1 << SIZE_BITS) - 3; x += 3) {
+                changePixel(board, x, y);
+                changePixel(board, x + 1, y);
+                changePixel(board, x, y + 1);
+                changePixel(board, x + 1, y + 1);
             }
         return board;
     }
