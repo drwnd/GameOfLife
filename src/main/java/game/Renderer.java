@@ -86,14 +86,18 @@ public final class Renderer extends Renderable {
         shouldRunGeneration = shouldRunGeneration && ToggleSetting.SIMULATION_RUNNING.value();
 
         if (shouldRunGeneration) {
+            glFinish();
             lastGenerationNanoTime = currentTime;
             ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE);
             computeShader.bind();
             computeShader.setUniform("mask", MASK);
             glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
             glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
-            glDispatchCompute(1 << SIZE_BITS - 5, 1 << SIZE_BITS - 6, 1);
+            long start = System.nanoTime();
+            glDispatchCompute(1 << SIZE_BITS - 10, 1 << SIZE_BITS, 1);
             glMemoryBarrier(GL_ALL_BARRIER_BITS);
+            glFinish();
+            System.out.println((System.nanoTime() - start) / 1_000);
         }
 
         ComputeShader changeShader = (ComputeShader) AssetManager.get(Shaders.CHANGE_CELL);
