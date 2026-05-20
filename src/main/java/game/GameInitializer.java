@@ -125,8 +125,8 @@ public enum GameInitializer implements Option {
     }
 
     private static void changePixel(int[] board, int x, int y) {
-        int index = (y >> 2 & MASK) << SIZE_BITS - 3 | x >> 3 & MASK;
-        board[index] ^= 1 << (y << 3 | x & 7);
+        int index = (y >> 3 & MASK) << SIZE_BITS - 2 | x >> 2 & MASK;
+        board[index] ^= 1 << (y << 2 | x & 3);
     }
 
 

@@ -20,7 +20,7 @@ struct Region {
 };
 
 uint valueAt(ivec2 position) {
-    return imageLoad(source, position & ivec2(mask >> 3, mask >> 2)).r;
+    return imageLoad(source, position & ivec2(mask >> 2, mask >> 3)).r;
 }
 
 Region sampleRegion(ivec2 texelCoord) {
@@ -42,19 +42,19 @@ Region sampleRegion(ivec2 texelCoord) {
 uint getFromRegion(Region region, int x, int y) {
     if (x == -1) {
         if (y == -1) return region.bottomLeft >> 31 & 1;
-        if (y == 4) return region.topLeft >> 7 & 1;
-        return region.left >> (y * 8 + 7) & 1;
+        if (y == 8) return region.topLeft >> 3 & 1;
+        return region.left >> (y * 4 + 3) & 1;
     }
 
-    if (x == 8) {
-        if (y == -1) return region.bottomRight >> 24 & 1;
-        if (y == 4) return region.topRight & 1;
-        return region.right >> (y * 8) & 1;
+    if (x == 4) {
+        if (y == -1) return region.bottomRight >> 28 & 1;
+        if (y == 8) return region.topRight & 1;
+        return region.right >> (y * 4) & 1;
     }
 
-    if (y == -1) return region.bottom >> 24 + (x & 7) & 1;
-    if (y == 4) return region.top >> (x & 7) & 1;
-    return region.center >> (y << 3 | x & 7) & 1;
+    if (y == -1) return region.bottom >> 28 + (x & 3) & 1;
+    if (y == 8) return region.top >> (x & 3) & 1;
+    return region.center >> (y << 2 | x & 3) & 1;
 }
 
 
@@ -63,8 +63,8 @@ void main() {
     Region region = sampleRegion(texelCoord);
     uint result = 0;
 
-    for (int y = 0; y < 4; y++) {
-        for (int x = 0; x < 8; x++) {
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 4; x++) {
             uint counter = getFromRegion(region, x, y) << 4;
 
             counter += getFromRegion(region, x - 1, y + 1);
@@ -78,7 +78,7 @@ void main() {
             counter += getFromRegion(region, x + 0, y - 1);
             counter += getFromRegion(region, x + 1, y - 1);
 
-            result |= (0xc0008 >> counter & 1) << (y << 3 | x & 7);
+            result |= (0xc0008 >> counter & 1) << (y << 2 | x & 3);
         }
     }
 

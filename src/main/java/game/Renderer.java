@@ -94,7 +94,7 @@ public final class Renderer extends Renderable {
             glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
             glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
             long start = System.nanoTime();
-            glDispatchCompute(1 << SIZE_BITS - 8, 1 << SIZE_BITS - 2, 1);
+            glDispatchCompute(1 << SIZE_BITS - 7, 1 << SIZE_BITS - 3, 1);
             glMemoryBarrier(GL_ALL_BARRIER_BITS);
             glFinish();
             System.out.println((System.nanoTime() - start) / 1_000);
@@ -140,7 +140,7 @@ public final class Renderer extends Renderable {
     private static int genTexture(int[] data) {
         int texture = glGenTextures();
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, 1 << SIZE_BITS - 3, 1 << SIZE_BITS - 2, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, 1 << SIZE_BITS - 2, 1 << SIZE_BITS - 3, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

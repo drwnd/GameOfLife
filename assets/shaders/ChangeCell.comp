@@ -7,9 +7,9 @@ layout(r32ui, binding = 0) restrict uniform uimage2D nextSource;
 uniform ivec2 position;
 
 void main() {
-    ivec2 coord = ivec2(position.x >> 3, position.y >> 2);
+    ivec2 coord = ivec2(position.x >> 2, position.y >> 3);
 
     uint value = imageLoad(nextSource, coord).r;
-    value ^= 1 << (position.y << 3 | position.x & 7);
+    value ^= 1 << (position.y << 2 | position.x & 3);
     imageStore(nextSource, coord, uvec4(value));
 }
