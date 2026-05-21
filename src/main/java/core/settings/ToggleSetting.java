@@ -5,7 +5,8 @@ import static org.lwjgl.glfw.GLFW.*;
 public enum ToggleSetting implements KeyBound {
 
     V_SYNC(true),
-    SIMULATION_RUNNING(true, GLFW_KEY_SPACE);
+    SIMULATION_RUNNING(true, GLFW_KEY_SPACE),
+    USE_CHUNKING(false);
 
     public static void setIfPresent(String name, String value) {
         try {

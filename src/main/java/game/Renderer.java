@@ -11,12 +11,13 @@ import core.settings.KeySetting;
 import core.settings.OptionSetting;
 import core.settings.ToggleSetting;
 import core.settings.optionSettings.ColorOption;
+import core.utils.IntArrayList;
+
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 
-import javax.swing.*;
-import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL46.*;
@@ -28,7 +29,6 @@ public final class Renderer extends Renderable {
 
     public Renderer() {
         super(new Vector2f(1.0F), new Vector2f(0.0F));
-
         resetBoard();
     }
 
@@ -88,14 +88,9 @@ public final class Renderer extends Renderable {
         if (shouldRunGeneration) {
             glFinish();
             lastGenerationNanoTime = currentTime;
-            ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE);
-            computeShader.bind();
-            computeShader.setUniform("mask", MASK);
-            glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
-            glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
             long start = System.nanoTime();
-            glDispatchCompute(1 << SIZE_BITS - 7, 1 << SIZE_BITS - 3, 1);
-            glMemoryBarrier(GL_ALL_BARRIER_BITS);
+            if (ToggleSetting.USE_CHUNKING.value()) runGenerationWithChunking();
+            else runGenerationNoChunking();
             glFinish();
             System.out.println((System.nanoTime() - start) / 1_000);
         }
@@ -104,11 +99,13 @@ public final class Renderer extends Renderable {
         changeShader.bind();
 
         glBindImageTexture(0, texture1, 0, false, 0, GL_READ_WRITE, GL_R32I);
+        glBindImageTexture(1, texture0, 0, false, 0, GL_READ_WRITE, GL_R32I);
         while (!toChangePixels.isEmpty()) {
             Vector2i pixelCoordinate = toChangePixels.removeLast();
             changeShader.setUniform("position", pixelCoordinate.x, pixelCoordinate.y);
             glDispatchCompute(1, 1, 1);
             glMemoryBarrier(GL_ALL_BARRIER_BITS);
+            lastDispatchCount = -1;
         }
 
 
@@ -136,6 +133,85 @@ public final class Renderer extends Renderable {
         }
     }
 
+    private void runGenerationNoChunking() {
+        lastDispatchCount = -1;
+        ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_NO_CHUNKING);
+        computeShader.bind();
+        computeShader.setUniform("mask", MASK);
+        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
+        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
+        glDispatchCompute(1 << SIZE_BITS - 7, 1 << SIZE_BITS - 3, 1);
+    }
+
+    private void runGenerationWithChunking() {
+        if (lastDispatchCount >= 0) queueNeighboringChunks();
+        else queueAllChunks();
+
+        if (startPositions.size() < startPositions.getData().length / 4) {
+            IntArrayList newStartPositions = new IntArrayList(startPositions.getData().length / 4);
+            System.arraycopy(startPositions.getData(), 0, newStartPositions.getData(), 0, startPositions.size());
+            newStartPositions.pad(startPositions.size());
+            startPositions = newStartPositions;
+        }
+        lastDispatchCount = startPositions.size();
+
+        glNamedBufferData(startPositionsBuffer, startPositions.getData(), GL_STREAM_DRAW);
+        glNamedBufferData(changedFlagBuffer, lastDispatchCount + 4, GL_STREAM_DRAW);
+        ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_WITH_CHUNKING);
+        computeShader.bind();
+        computeShader.setUniform("mask", MASK);
+        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
+        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, changedFlagBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, startPositionsBuffer);
+        glDispatchCompute(lastDispatchCount, 1, 1);
+        System.out.printf("Dispatching %d work groups%n", lastDispatchCount);
+    }
+
+    private void queueAllChunks() {
+        startPositions.clear();
+        for (int groupX = 0; groupX < (1 << SIZE_BITS - 6); groupX++)
+            for (int groupY = 0; groupY < (1 << SIZE_BITS - 6); groupY++)
+                startPositions.add(groupX << 16 | groupY);
+        glCopyImageSubData(
+                texture1, GL_TEXTURE_2D, 0, 0, 0, 0,
+                texture0, GL_TEXTURE_2D, 0, 0, 0, 0,
+                1 << SIZE_BITS - 2, 1 << SIZE_BITS - 3, 1);
+    }
+
+    private void queueNeighboringChunks() {
+        int[] changedFlags = new int[lastDispatchCount / 4 + 1];
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, changedFlagBuffer);
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, changedFlags);
+
+        HashSet<Integer> newStartPositions = new HashSet<>(changedFlags.length);
+        int[] startPositions = this.startPositions.getData();
+        for (int index = 0; index < changedFlags.length * 4; index++) {
+            if ((changedFlags[index >> 2] >> (index & 3) * 8) == 0) continue;
+            int startX = startPositions[index] >>> 16;
+            int startY = startPositions[index] & 0xFFFF;
+
+            addTo(newStartPositions, startX - 1, startY - 1);
+            addTo(newStartPositions, startX - 1, startY);
+            addTo(newStartPositions, startX - 1, startY + 1);
+
+            addTo(newStartPositions, startX, startY - 1);
+            addTo(newStartPositions, startX, startY);
+            addTo(newStartPositions, startX, startY + 1);
+
+            addTo(newStartPositions, startX + 1, startY - 1);
+            addTo(newStartPositions, startX + 1, startY);
+            addTo(newStartPositions, startX + 1, startY + 1);
+        }
+
+        this.startPositions.clear();
+        for (int position : newStartPositions) this.startPositions.add(position);
+    }
+
+    private static void addTo(HashSet<Integer> startPositions, int startX, int startY) {
+        startPositions.add((startX & MASK >> 6) << 16 | (startY & MASK >> 6) & 0xFFFF);
+    }
+
 
     private static int genTexture(int[] data) {
         int texture = glGenTextures();
@@ -146,6 +222,17 @@ public final class Renderer extends Renderable {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         return texture;
+    }
+
+    private static int genChangedFlagBuffer() {
+        int buffer = glGenBuffers();
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (1L << SIZE_BITS - 6) * (1L << SIZE_BITS - 6), GL_DYNAMIC_READ);
+        return buffer;
+    }
+
+    private static int genStartPositionsBuffer() {
+        return glGenBuffers();
     }
 
     private float getSizeX() {
@@ -162,10 +249,16 @@ public final class Renderer extends Renderable {
 
         if (texture0 != 0) glDeleteTextures(texture0);
         if (texture1 != 0) glDeleteTextures(texture1);
+        if (changedFlagBuffer != 0) glDeleteBuffers(changedFlagBuffer);
+        if (startPositionsBuffer != 0) glDeleteBuffers(startPositionsBuffer);
 
         GameInitializer initializer = (GameInitializer) OptionSetting.INITIALIZER.value();
         texture0 = genTexture(null);
         texture1 = genTexture(initializer.getInitializedBoard());
+        changedFlagBuffer = genChangedFlagBuffer();
+        startPositionsBuffer = genStartPositionsBuffer();
+
+        lastDispatchCount = -1;
     }
 
     private void change(Vector2i cursorPos) {
@@ -182,6 +275,10 @@ public final class Renderer extends Renderable {
     private int startX = 0, startY = 0;
     private float cellSize = 1;
     private long lastGenerationNanoTime = System.nanoTime();
+
+    private int changedFlagBuffer = 0, startPositionsBuffer = 0;
+    private IntArrayList startPositions = new IntArrayList(128);
+    int lastDispatchCount = -1;
 
     private GameInput input;
     private final ArrayList<Vector2i> toChangePixels = new ArrayList<>();

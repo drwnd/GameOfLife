@@ -28,3 +28,4 @@ Randomizer Threshold
 Game Initializer
 Size Bits (n -> 2^n Board size)
 Maximum Generations per Second
+Use Chunking

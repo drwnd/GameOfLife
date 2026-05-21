@@ -54,4 +54,9 @@ public final class IntArrayList {
 
     private int[] data;
     private int size = 0;
+
+    public void pad(int length) {
+        size += length;
+        if (size >= data.length) grow();
+    }
 }

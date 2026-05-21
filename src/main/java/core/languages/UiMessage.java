@@ -34,7 +34,8 @@ public enum UiMessage implements StringGetter {
     RANDOMIZER_THRESHOLD,
     GAME_INITIALIZER,
     SIZE_BITS,
-    MAX_GENERATIONS_PER_SECOND;
+    MAX_GENERATIONS_PER_SECOND,
+    USE_CHUNKING;
 
     @Override
     public String get() {
