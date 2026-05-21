@@ -156,7 +156,7 @@ public final class Renderer extends Renderable {
         lastDispatchCount = startPositions.size();
 
         glNamedBufferData(startPositionsBuffer, startPositions.getData(), GL_STREAM_DRAW);
-        glNamedBufferData(changedFlagBuffer, lastDispatchCount + 4, GL_STREAM_DRAW);
+        glNamedBufferData(changedFlagBuffer, new int[lastDispatchCount / 4 + 1], GL_STREAM_DRAW);
         ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_WITH_CHUNKING);
         computeShader.bind();
         computeShader.setUniform("mask", MASK);
@@ -186,7 +186,7 @@ public final class Renderer extends Renderable {
 
         HashSet<Integer> newStartPositions = new HashSet<>(changedFlags.length);
         int[] startPositions = this.startPositions.getData();
-        for (int index = 0; index < changedFlags.length * 4; index++) {
+        for (int index = 0; index < this.startPositions.size(); index++) {
             if ((changedFlags[index >> 2] >> (index & 3) * 8) == 0) continue;
             int startX = startPositions[index] >>> 16;
             int startY = startPositions[index] & 0xFFFF;
