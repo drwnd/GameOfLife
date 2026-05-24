@@ -19,6 +19,7 @@ public final class ShaderLoader {
             case CoreShaders.TEXT -> new TextShader("Text.vert", "Text.frag", identifier);
             case Shaders.GAME_OF_LIFE_NO_CHUNKING -> new ComputeShader("GameOfLifeNoChunking.comp", identifier);
             case Shaders.GAME_OF_LIFE_WITH_CHUNKING -> new ComputeShader("GameOfLifeWithChunking.comp", identifier);
+            case Shaders.CHUNK_DISPATCHER -> new ComputeShader("ChunkDispatcher.comp", identifier);
             case Shaders.CHANGE_CELL -> new ComputeShader("ChangeCell.comp", identifier);
             case Shaders.RENDERING -> new GuiShader("Gui.vert", "Render.frag", identifier);
             default -> throw new IllegalStateException("Unexpected value: " + identifier);

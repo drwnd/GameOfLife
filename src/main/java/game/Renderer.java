@@ -11,13 +11,11 @@ import core.settings.KeySetting;
 import core.settings.OptionSetting;
 import core.settings.ToggleSetting;
 import core.settings.optionSettings.ColorOption;
-import core.utils.IntArrayList;
 
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL46.*;
@@ -105,7 +103,7 @@ public final class Renderer extends Renderable {
             changeShader.setUniform("position", pixelCoordinate.x, pixelCoordinate.y);
             glDispatchCompute(1, 1, 1);
             glMemoryBarrier(GL_ALL_BARRIER_BITS);
-            lastDispatchCount = -1;
+            chunkingActive = false;
         }
 
 
@@ -134,84 +132,50 @@ public final class Renderer extends Renderable {
     }
 
     private void runGenerationNoChunking() {
-        lastDispatchCount = -1;
+        chunkingActive = false;
         ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_NO_CHUNKING);
         computeShader.bind();
         computeShader.setUniform("mask", MASK);
-        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
-        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
+        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32UI);
+        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32UI);
         glDispatchCompute(1 << SIZE_BITS - 7, 1 << SIZE_BITS - 3, 1);
     }
 
     private void runGenerationWithChunking() {
-        if (lastDispatchCount >= 0) queueNeighboringChunks();
-        else queueAllChunks();
+        if (!chunkingActive) activateChunking();
 
-        if (startPositions.size() < startPositions.getData().length / 4) {
-            IntArrayList newStartPositions = new IntArrayList(startPositions.getData().length / 4);
-            System.arraycopy(startPositions.getData(), 0, newStartPositions.getData(), 0, startPositions.size());
-            newStartPositions.pad(startPositions.size());
-            startPositions = newStartPositions;
-        }
-        lastDispatchCount = startPositions.size();
+        ComputeShader chunkDispatcher = (ComputeShader) AssetManager.get(Shaders.CHUNK_DISPATCHER);
+        chunkDispatcher.bind();
+        chunkDispatcher.setUniform("chunkMask", MASK >> 6);
+        glBindImageTexture(0, changedFlagTexture, 0, false, 0, GL_READ_WRITE, GL_R8UI);
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, atomicIndexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, startPositionsBuffer);
+        glDispatchCompute(1 << SIZE_BITS - 6 - 5, 1 << SIZE_BITS - 6, 1);
 
-        glNamedBufferData(startPositionsBuffer, startPositions.getData(), GL_STREAM_DRAW);
-        glNamedBufferData(changedFlagBuffer, new int[lastDispatchCount / 4 + 1], GL_STREAM_DRAW);
+        glCopyNamedBufferSubData(atomicIndexBuffer, indirectDispatchBuffer, 0, 0, 4);
+        glClearTexImage(changedFlagTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, new int[]{0});
+        glClearNamedBufferData(atomicIndexBuffer, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, new int[]{0});
+
         ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_WITH_CHUNKING);
         computeShader.bind();
         computeShader.setUniform("mask", MASK);
-        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32I);
-        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32I);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, changedFlagBuffer);
+        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32UI);
+        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32UI);
+        glBindImageTexture(2, changedFlagTexture, 0, false, 0, GL_WRITE_ONLY, GL_R8UI);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, startPositionsBuffer);
-        glDispatchCompute(lastDispatchCount, 1, 1);
-        System.out.printf("Dispatching %d work groups%n", lastDispatchCount);
+        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, indirectDispatchBuffer);
+        glDispatchComputeIndirect(0);
     }
 
-    private void queueAllChunks() {
-        startPositions.clear();
-        for (int groupX = 0; groupX < (1 << SIZE_BITS - 6); groupX++)
-            for (int groupY = 0; groupY < (1 << SIZE_BITS - 6); groupY++)
-                startPositions.add(groupX << 16 | groupY);
+    private void activateChunking() {
+        chunkingActive = true;
         glCopyImageSubData(
                 texture1, GL_TEXTURE_2D, 0, 0, 0, 0,
                 texture0, GL_TEXTURE_2D, 0, 0, 0, 0,
                 1 << SIZE_BITS - 2, 1 << SIZE_BITS - 3, 1);
+
+        glClearTexImage(changedFlagTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, new int[]{0x01010101});
     }
-
-    private void queueNeighboringChunks() {
-        int[] changedFlags = new int[lastDispatchCount / 4 + 1];
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, changedFlagBuffer);
-        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, changedFlags);
-
-        HashSet<Integer> newStartPositions = new HashSet<>(changedFlags.length);
-        int[] startPositions = this.startPositions.getData();
-        for (int index = 0; index < this.startPositions.size(); index++) {
-            if ((changedFlags[index >> 2] >> (index & 3) * 8) == 0) continue;
-            int startX = startPositions[index] >>> 16;
-            int startY = startPositions[index] & 0xFFFF;
-
-            addTo(newStartPositions, startX - 1, startY - 1);
-            addTo(newStartPositions, startX - 1, startY);
-            addTo(newStartPositions, startX - 1, startY + 1);
-
-            addTo(newStartPositions, startX, startY - 1);
-            addTo(newStartPositions, startX, startY);
-            addTo(newStartPositions, startX, startY + 1);
-
-            addTo(newStartPositions, startX + 1, startY - 1);
-            addTo(newStartPositions, startX + 1, startY);
-            addTo(newStartPositions, startX + 1, startY + 1);
-        }
-
-        this.startPositions.clear();
-        for (int position : newStartPositions) this.startPositions.add(position);
-    }
-
-    private static void addTo(HashSet<Integer> startPositions, int startX, int startY) {
-        startPositions.add((startX & MASK >> 6) << 16 | (startY & MASK >> 6) & 0xFFFF);
-    }
-
 
     private static int genTexture(int[] data) {
         int texture = glGenTextures();
@@ -224,15 +188,36 @@ public final class Renderer extends Renderable {
         return texture;
     }
 
-    private static int genChangedFlagBuffer() {
-        int buffer = glGenBuffers();
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (1L << SIZE_BITS - 6) * (1L << SIZE_BITS - 6), GL_DYNAMIC_READ);
-        return buffer;
+    private static int genChangedFlagTexture() {
+        int texture = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 1 << SIZE_BITS - 6, 1 << SIZE_BITS - 6, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        return texture;
     }
 
     private static int genStartPositionsBuffer() {
-        return glGenBuffers();
+        int buffer = glGenBuffers();
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (1L << SIZE_BITS - 6) * (1L << SIZE_BITS - 6) * 4, GL_DYNAMIC_COPY);
+        return buffer;
+    }
+
+    private static int genAtomicIndexBuffer() {
+        int buffer = glGenBuffers();
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, buffer);
+        glBufferData(GL_ATOMIC_COUNTER_BUFFER, 4, GL_DYNAMIC_COPY);
+        return buffer;
+    }
+
+    private static int genIndirectDispatchBuffer() {
+        int buffer = glGenBuffers();
+        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, buffer);
+        glBufferData(GL_DISPATCH_INDIRECT_BUFFER, new int[]{0, 1, 1, 0}, GL_DYNAMIC_COPY);
+        return buffer;
     }
 
     private float getSizeX() {
@@ -249,16 +234,19 @@ public final class Renderer extends Renderable {
 
         if (texture0 != 0) glDeleteTextures(texture0);
         if (texture1 != 0) glDeleteTextures(texture1);
-        if (changedFlagBuffer != 0) glDeleteBuffers(changedFlagBuffer);
+        if (changedFlagTexture != 0) glDeleteTextures(changedFlagTexture);
         if (startPositionsBuffer != 0) glDeleteBuffers(startPositionsBuffer);
+        if (atomicIndexBuffer != 0) glDeleteBuffers(atomicIndexBuffer);
+        if (indirectDispatchBuffer != 0) glDeleteBuffers(indirectDispatchBuffer);
 
         GameInitializer initializer = (GameInitializer) OptionSetting.INITIALIZER.value();
         texture0 = genTexture(null);
         texture1 = genTexture(initializer.getInitializedBoard());
-        changedFlagBuffer = genChangedFlagBuffer();
+        changedFlagTexture = genChangedFlagTexture();
         startPositionsBuffer = genStartPositionsBuffer();
-
-        lastDispatchCount = -1;
+        atomicIndexBuffer = genAtomicIndexBuffer();
+        indirectDispatchBuffer = genIndirectDispatchBuffer();
+        chunkingActive = false;
     }
 
     private void change(Vector2i cursorPos) {
@@ -275,10 +263,9 @@ public final class Renderer extends Renderable {
     private int startX = 0, startY = 0;
     private float cellSize = 1;
     private long lastGenerationNanoTime = System.nanoTime();
+    private boolean chunkingActive = false;
 
-    private int changedFlagBuffer = 0, startPositionsBuffer = 0;
-    private IntArrayList startPositions = new IntArrayList(128);
-    int lastDispatchCount = -1;
+    private int changedFlagTexture = 0, startPositionsBuffer = 0, atomicIndexBuffer = 0, indirectDispatchBuffer = 0;
 
     private GameInput input;
     private final ArrayList<Vector2i> toChangePixels = new ArrayList<>();

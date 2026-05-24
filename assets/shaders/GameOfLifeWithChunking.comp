@@ -5,9 +5,7 @@ layout (local_size_x = 16, local_size_y = 8, local_size_z = 1) in;
 
 layout (r32ui, binding = 0) writeonly restrict uniform uimage2D destination;
 layout (r32ui, binding = 1) readonly restrict uniform uimage2D source;
-layout (std430, binding = 2) writeonly restrict buffer changedFlagBuffer {
-    uint8_t[] flags;
-};
+layout (r8ui, binding = 2) writeonly restrict uniform uimage2D changedFlagTexture;
 layout (std430, binding = 3) readonly restrict buffer startBuffer {
     uint[] startPositions;
 };
@@ -66,8 +64,8 @@ uint getFromRegion(Region region, int x, int y) {
 
 
 void main() {
-    uint startPosition = startPositions[gl_WorkGroupID.x];
-    ivec2 texelCoord = ivec2((startPosition >> 16) << 4, (startPosition & 0xFFFF) << 3) + ivec2(gl_LocalInvocationID.xy);
+    uint chunkPosition = startPositions[gl_WorkGroupID.x];
+    ivec2 texelCoord = ivec2((chunkPosition >> 16) << 4, (chunkPosition & 0xFFFF) << 3) + ivec2(gl_LocalInvocationID.xy);
     Region region = sampleRegion(texelCoord);
     uint result = 0;
 
@@ -90,5 +88,5 @@ void main() {
         }
     }
     imageStore(destination, texelCoord, uvec4(result));
-    if (result != region.center) flags[gl_WorkGroupID.x] = uint8_t(1);
+    if (result != region.center) imageStore(changedFlagTexture, ivec2(chunkPosition >> 16, chunkPosition & 0xFFFF), uvec4(1));
 }

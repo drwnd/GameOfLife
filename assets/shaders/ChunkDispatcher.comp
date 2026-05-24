@@ -1,0 +1,37 @@
+#version 460 core
+
+layout (local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout (r8ui, binding = 0) readonly restrict uniform uimage2D changedFlagTexture;
+layout (binding = 1, offset = 0) uniform atomic_uint index;
+layout (std430, binding = 2) writeonly restrict buffer startBuffer {
+    uint[] startPositions;
+};
+
+uniform int chunkMask;
+
+bool shouldExecute() {
+    ivec2 chunkPosition = ivec2(gl_GlobalInvocationID.xy);
+
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(-1, 0) & chunkMask).x != 0) return true;
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(0, 0) & chunkMask).x != 0) return true;
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(1, 0) & chunkMask).x != 0) return true;
+
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(-1, -1) & chunkMask).x != 0) return true;
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(0, -1) & chunkMask).x != 0) return true;
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(1, -1) & chunkMask).x != 0) return true;
+
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(-1, 1) & chunkMask).x != 0) return true;
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(0, 1) & chunkMask).x != 0) return true;
+    if (imageLoad(changedFlagTexture, chunkPosition + ivec2(1, 1) & chunkMask).x != 0) return true;
+
+    return false;
+}
+
+void main() {
+    if (!shouldExecute()) return;
+
+    uint currentIndex = atomicCounterIncrement(index);
+    uint chunkPosition = gl_GlobalInvocationID.x << 16 | gl_GlobalInvocationID.y;
+    startPositions[currentIndex] = chunkPosition;
+}
