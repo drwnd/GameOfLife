@@ -106,7 +106,6 @@ public final class Renderer extends Renderable {
             chunkingActive = false;
         }
 
-
         GuiShader shader = (GuiShader) AssetManager.get(Shaders.RENDERING);
         shader.bind();
 
@@ -122,7 +121,6 @@ public final class Renderer extends Renderable {
 
         shader.flipNextDrawVertically();
         shader.drawFullScreenQuad();
-
 
         if (shouldRunGeneration) {
             int temp = texture0;
@@ -144,17 +142,17 @@ public final class Renderer extends Renderable {
     private void runGenerationWithChunking() {
         if (!chunkingActive) activateChunking();
 
+        glNamedBufferSubData(indirectDispatchBuffer, 0, new int[]{0, 1, 1});
+
         ComputeShader chunkDispatcher = (ComputeShader) AssetManager.get(Shaders.CHUNK_DISPATCHER);
         chunkDispatcher.bind();
         chunkDispatcher.setUniform("chunkMask", MASK >> 6);
         glBindImageTexture(0, changedFlagTexture, 0, false, 0, GL_READ_WRITE, GL_R8UI);
-        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, atomicIndexBuffer);
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectDispatchBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, startPositionsBuffer);
-        glDispatchCompute(1 << SIZE_BITS - 6 - 5, 1 << SIZE_BITS - 6, 1);
+        glDispatchCompute(Math.max(1, 1 << SIZE_BITS - 6 - 5), 1 << SIZE_BITS - 6, 1);
 
-        glCopyNamedBufferSubData(atomicIndexBuffer, indirectDispatchBuffer, 0, 0, 4);
         glClearTexImage(changedFlagTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, new int[]{0});
-        glClearNamedBufferData(atomicIndexBuffer, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, new int[]{0});
 
         ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_WITH_CHUNKING);
         computeShader.bind();
@@ -206,17 +204,10 @@ public final class Renderer extends Renderable {
         return buffer;
     }
 
-    private static int genAtomicIndexBuffer() {
-        int buffer = glGenBuffers();
-        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, buffer);
-        glBufferData(GL_ATOMIC_COUNTER_BUFFER, 4, GL_DYNAMIC_COPY);
-        return buffer;
-    }
-
     private static int genIndirectDispatchBuffer() {
         int buffer = glGenBuffers();
         glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, buffer);
-        glBufferData(GL_DISPATCH_INDIRECT_BUFFER, new int[]{0, 1, 1, 0}, GL_DYNAMIC_COPY);
+        glBufferData(GL_DISPATCH_INDIRECT_BUFFER, new int[]{0, 1, 1}, GL_DYNAMIC_COPY);
         return buffer;
     }
 
@@ -236,7 +227,6 @@ public final class Renderer extends Renderable {
         if (texture1 != 0) glDeleteTextures(texture1);
         if (changedFlagTexture != 0) glDeleteTextures(changedFlagTexture);
         if (startPositionsBuffer != 0) glDeleteBuffers(startPositionsBuffer);
-        if (atomicIndexBuffer != 0) glDeleteBuffers(atomicIndexBuffer);
         if (indirectDispatchBuffer != 0) glDeleteBuffers(indirectDispatchBuffer);
 
         GameInitializer initializer = (GameInitializer) OptionSetting.INITIALIZER.value();
@@ -244,7 +234,6 @@ public final class Renderer extends Renderable {
         texture1 = genTexture(initializer.getInitializedBoard());
         changedFlagTexture = genChangedFlagTexture();
         startPositionsBuffer = genStartPositionsBuffer();
-        atomicIndexBuffer = genAtomicIndexBuffer();
         indirectDispatchBuffer = genIndirectDispatchBuffer();
         chunkingActive = false;
     }
@@ -265,7 +254,7 @@ public final class Renderer extends Renderable {
     private long lastGenerationNanoTime = System.nanoTime();
     private boolean chunkingActive = false;
 
-    private int changedFlagTexture = 0, startPositionsBuffer = 0, atomicIndexBuffer = 0, indirectDispatchBuffer = 0;
+    private int changedFlagTexture = 0, startPositionsBuffer = 0, indirectDispatchBuffer = 0;
 
     private GameInput input;
     private final ArrayList<Vector2i> toChangePixels = new ArrayList<>();

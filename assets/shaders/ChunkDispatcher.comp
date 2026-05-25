@@ -29,7 +29,7 @@ bool shouldExecute() {
 }
 
 void main() {
-    if (!shouldExecute()) return;
+    if (gl_GlobalInvocationID.x > chunkMask || !shouldExecute()) return;
 
     uint currentIndex = atomicCounterIncrement(index);
     uint chunkPosition = gl_GlobalInvocationID.x << 16 | gl_GlobalInvocationID.y;
