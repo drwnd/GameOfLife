@@ -2,10 +2,15 @@
 
 layout (local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-layout (r32ui, binding = 0) writeonly restrict uniform uimage2D destination;
-layout (r32ui, binding = 1) readonly restrict uniform uimage2D source;
+layout (std430, binding = 0) writeonly restrict buffer destinationBuffer {
+    uint[] destination;
+};
+layout (std430, binding = 1) readonly restrict buffer sourceBuffer {
+    uint[] source;
+};
 
-uniform int mask;
+uniform ivec2 mask;
+uniform int sizeBits;
 
 struct Region {
     uint topLeft;
@@ -20,7 +25,8 @@ struct Region {
 };
 
 uint valueAt(ivec2 position) {
-    return imageLoad(source, position & ivec2(mask >> 2, mask >> 3)).r;
+    int index = (position.y & mask.y) << sizeBits | position.x & mask.x;
+    return source[index];
 }
 
 Region sampleRegion(ivec2 texelCoord) {
@@ -42,19 +48,19 @@ Region sampleRegion(ivec2 texelCoord) {
 uint getFromRegion(Region region, int x, int y) {
     if (x == -1) {
         if (y == -1) return region.bottomLeft >> 31 & 1;
-        if (y == 8) return region.topLeft >> 3 & 1;
-        return region.left >> (y * 4 + 3) & 1;
+        if (y == 32) return region.topLeft & 1;
+        return region.left >> y & 1;
     }
 
-    if (x == 4) {
-        if (y == -1) return region.bottomRight >> 28 & 1;
-        if (y == 8) return region.topRight & 1;
-        return region.right >> (y * 4) & 1;
+    if (x == 1) {
+        if (y == -1) return region.bottomRight >> 31 & 1;
+        if (y == 32) return region.topRight & 1;
+        return region.right >> y & 1;
     }
 
-    if (y == -1) return region.bottom >> 28 + (x & 3) & 1;
-    if (y == 8) return region.top >> (x & 3) & 1;
-    return region.center >> (y << 2 | x & 3) & 1;
+    if (y == -1) return region.bottom >> 31 & 1;
+    if (y == 32) return region.top & 1;
+    return region.center >> y & 1;
 }
 
 
@@ -63,24 +69,23 @@ void main() {
     Region region = sampleRegion(texelCoord);
     uint result = 0;
 
-    for (int y = 0; y < 8; y++) {
-        for (int x = 0; x < 4; x++) {
-            uint counter = getFromRegion(region, x, y) << 4;
+    for (int y = 0; y < 32; y++) {
+        uint counter = getFromRegion(region, 0, y) << 4;
 
-            counter += getFromRegion(region, x - 1, y + 1);
-            counter += getFromRegion(region, x + 0, y + 1);
-            counter += getFromRegion(region, x + 1, y + 1);
+        counter += getFromRegion(region, -1, y + 1);
+        counter += getFromRegion(region, 0, y + 1);
+        counter += getFromRegion(region, 1, y + 1);
 
-            counter += getFromRegion(region, x - 1, y + 0);
-            counter += getFromRegion(region, x + 1, y + 0);
+        counter += getFromRegion(region, -1, y + 0);
+        counter += getFromRegion(region, 1, y + 0);
 
-            counter += getFromRegion(region, x - 1, y - 1);
-            counter += getFromRegion(region, x + 0, y - 1);
-            counter += getFromRegion(region, x + 1, y - 1);
+        counter += getFromRegion(region, -1, y - 1);
+        counter += getFromRegion(region, 0, y - 1);
+        counter += getFromRegion(region, 1, y - 1);
 
-            result |= (0xc0008 >> counter & 1) << (y << 2 | x & 3);
-        }
+        result |= (0xc0008 >> counter & 1) << y;
     }
 
-    imageStore(destination, texelCoord, uvec4(result));
+    int index = texelCoord.y << sizeBits | texelCoord.x;
+    destination[index] = result;
 }

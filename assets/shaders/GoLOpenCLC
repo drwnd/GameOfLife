@@ -1,0 +1,29 @@
+size_t index(const size_t length, const size_t x, const size_t y) {
+    const size_t mask = length - 1;
+    return (y & mask) * length + (x & mask);
+}
+
+void kernel gameOfLife(global const char* source, global char* destination, const size_t length) {
+    const size_t x = get_global_id(0);
+    const size_t y = get_global_id(1);
+
+    int counter = source[index(length, x, y)] << 4;
+
+    counter += source[index(length, x - 1, y - 1)];
+    counter += source[index(length, x    , y - 1)];
+    counter += source[index(length, x + 1, y - 1)];
+
+    counter += source[index(length, x - 1, y)];
+    counter += source[index(length, x + 1, y)];
+
+    counter += source[index(length, x - 1, y + 1)];
+    counter += source[index(length, x    , y + 1)];
+    counter += source[index(length, x + 1, y + 1)];
+
+    const char result = (char) (0xc0008 >> counter & 1);
+    destination[index(length, x, y)] = result;
+}
+
+
+
+

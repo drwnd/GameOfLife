@@ -8,7 +8,7 @@ layout (std430, binding = 2) writeonly restrict buffer startBuffer {
     uint[] startPositions;
 };
 
-uniform int chunkMask;
+uniform ivec2 chunkMask;
 
 bool shouldExecute() {
     ivec2 chunkPosition = ivec2(gl_GlobalInvocationID.xy);
@@ -29,7 +29,7 @@ bool shouldExecute() {
 }
 
 void main() {
-    if (gl_GlobalInvocationID.x > chunkMask || !shouldExecute()) return;
+    if (!shouldExecute()) return;
 
     uint currentIndex = atomicCounterIncrement(index);
     uint chunkPosition = gl_GlobalInvocationID.x << 16 | gl_GlobalInvocationID.y;
