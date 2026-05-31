@@ -22,6 +22,7 @@ import static org.lwjgl.opengl.GL46.*;
 
 public final class Renderer extends Renderable {
 
+    public static final int CHUNK_SIZE_BITS = 6;
     public static int SIZE_BITS;
     public static int MASK;
 
@@ -146,11 +147,11 @@ public final class Renderer extends Renderable {
 
         ComputeShader chunkDispatcher = (ComputeShader) AssetManager.get(Shaders.CHUNK_DISPATCHER);
         chunkDispatcher.bind();
-        chunkDispatcher.setUniform("chunkMask", MASK >> 6);
+        chunkDispatcher.setUniform("chunkMask", MASK >> CHUNK_SIZE_BITS);
         glBindImageTexture(0, changedFlagTexture, 0, false, 0, GL_READ_WRITE, GL_R8UI);
         glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectDispatchBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, startPositionsBuffer);
-        glDispatchCompute(Math.max(1, 1 << SIZE_BITS - 6 - 5), 1 << SIZE_BITS - 6, 1);
+        glDispatchCompute(Math.max(1, 1 << SIZE_BITS - CHUNK_SIZE_BITS - 5), 1 << SIZE_BITS - CHUNK_SIZE_BITS, 1);
 
         glClearTexImage(changedFlagTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, new int[]{0});
 
@@ -189,7 +190,7 @@ public final class Renderer extends Renderable {
     private static int genChangedFlagTexture() {
         int texture = glGenTextures();
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 1 << SIZE_BITS - 6, 1 << SIZE_BITS - 6, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 1 << SIZE_BITS - CHUNK_SIZE_BITS, 1 << SIZE_BITS - CHUNK_SIZE_BITS, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -200,7 +201,7 @@ public final class Renderer extends Renderable {
     private static int genStartPositionsBuffer() {
         int buffer = glGenBuffers();
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (1L << SIZE_BITS - 6) * (1L << SIZE_BITS - 6) * 4, GL_DYNAMIC_COPY);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (1L << SIZE_BITS - CHUNK_SIZE_BITS) * (1L << SIZE_BITS - CHUNK_SIZE_BITS) * 4, GL_DYNAMIC_COPY);
         return buffer;
     }
 
