@@ -158,6 +158,7 @@ public final class Renderer extends Renderable {
         ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_WITH_CHUNKING);
         computeShader.bind();
         computeShader.setUniform("mask", MASK);
+        computeShader.setUniform("generationCount", (int) FloatSetting.GENERATIONS_PER_DISPATCH.value());
         glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32UI);
         glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32UI);
         glBindImageTexture(2, changedFlagTexture, 0, false, 0, GL_WRITE_ONLY, GL_R8UI);

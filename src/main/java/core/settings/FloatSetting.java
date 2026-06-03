@@ -8,7 +8,8 @@ public enum FloatSetting {
 
     SIZE_BITS(7, 17, 12, 1),
     RANDOMIZER_THRESHOLD(0.0F, 1.0F, 0.5F),
-    MAX_GENERATIONS_PER_SECOND(1, 400, 200, 1);
+    MAX_GENERATIONS_PER_SECOND(1, 400, 200, 1),
+    GENERATIONS_PER_DISPATCH(1, 4, 1, 1);
 
     public static void setIfPresent(String name, String value) {
         try {

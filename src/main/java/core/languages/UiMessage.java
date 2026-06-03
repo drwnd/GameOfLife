@@ -35,7 +35,8 @@ public enum UiMessage implements StringGetter {
     GAME_INITIALIZER,
     SIZE_BITS,
     MAX_GENERATIONS_PER_SECOND,
-    USE_CHUNKING;
+    USE_CHUNKING,
+    GENERATIONS_PER_DISPATCH;
 
     @Override
     public String get() {

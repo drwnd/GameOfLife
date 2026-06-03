@@ -15,6 +15,7 @@ public final class SettingsMenu extends CoreSettingsRenderable {
         addSlider(FloatSetting.SIZE_BITS, UiMessage.SIZE_BITS);
         addSlider(FloatSetting.MAX_GENERATIONS_PER_SECOND, UiMessage.MAX_GENERATIONS_PER_SECOND);
         addSlider(FloatSetting.RANDOMIZER_THRESHOLD, UiMessage.RANDOMIZER_THRESHOLD);
+        addSlider(FloatSetting.GENERATIONS_PER_DISPATCH, UiMessage.GENERATIONS_PER_DISPATCH);
         addToggle(ToggleSetting.SIMULATION_RUNNING, UiMessage.TOGGLE_SIMULATION);
         addToggle(ToggleSetting.USE_CHUNKING, UiMessage.USE_CHUNKING);
         addOption(OptionSetting.BACKGROUND_COLOR, UiMessage.BACKGROUND_COLOR);
