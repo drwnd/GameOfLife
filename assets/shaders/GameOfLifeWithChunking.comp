@@ -88,14 +88,9 @@ void storeIntoRegion(inout Region region, int x, int y) {
     }
 }
 
-void main() {
-    uint chunkPosition = startPositions[gl_WorkGroupID.x];
-    ivec2 texelCoord = ivec2((chunkPosition >> 16) << 4, (chunkPosition & 0xFFFF) << 3) + ivec2(gl_LocalInvocationID.xy);
-    Region sourceRegion = sampleRegion(texelCoord);
+uint computeCenter(Region sourceRegion, int count) {
     Region destinationRegion = Region(0, 0, 0, 0, 0, 0, 0, 0, 0);
-    uint orginal = sourceRegion.center;
 
-    int count = clamp(generationCount, 1, 4);
     for (int generation = count - 1; generation >= 0; generation--) {
         for (int y = -generation; y < 8 + generation; y++) {
             for (int x = -generation; x < 4 + generation; x++) {
@@ -118,7 +113,22 @@ void main() {
         sourceRegion = destinationRegion;
         destinationRegion = Region(0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
-    uint result = sourceRegion.center;
+    return sourceRegion.center;
+}
+
+void main() {
+    uint chunkPosition = startPositions[gl_WorkGroupID.x];
+    ivec2 texelCoord = ivec2((chunkPosition >> 16) << 4, (chunkPosition & 0xFFFF) << 3) + ivec2(gl_LocalInvocationID.xy);
+    Region sourceRegion = sampleRegion(texelCoord);
+    uint orginal = sourceRegion.center;
+    uint result = orginal;
+
+    const int count = clamp(generationCount, 1, 4);
+    if (count == 1) result = computeCenter(sourceRegion, 1);
+    if (count == 2) result = computeCenter(sourceRegion, 2);
+    if (count == 3) result = computeCenter(sourceRegion, 3);
+    if (count == 4) result = computeCenter(sourceRegion, 4);
+
     imageStore(destination, texelCoord, uvec4(result));
     if (result != orginal) imageStore(changedFlagTexture, ivec2(chunkPosition >> 16, chunkPosition & 0xFFFF), uvec4(1));
 }
