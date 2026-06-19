@@ -6,7 +6,8 @@ public enum ToggleSetting implements KeyBound {
 
     V_SYNC(true),
     SIMULATION_RUNNING(true, GLFW_KEY_SPACE),
-    USE_CHUNKING(false);
+    USE_CHUNKING(false),
+    COMPUTE_DOUBLE_GENERATION(false);
 
     public static void setIfPresent(String name, String value) {
         try {

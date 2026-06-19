@@ -1,14 +1,35 @@
+import java.util.Arrays;
+
 public final class MaskGenerator {
 
     public static void main(String[] args) {
-        buildMasksArrays(4, 8, (x, y) -> (y << 2 | x & 3) & 31);
+        buildMasksArrays(4, 8, 1, (x, y) -> (y << 2 | x & 3) & 31);
+        System.out.println("####################");
+        buildMasksArrays(4, 8, 2, (x, y) -> (y << 2 | x & 3) & 31);
+        System.out.println("####################");
+        printXsAndYs(4, 8, 2);
     }
 
-    private static void buildMasksArrays(int width, int height, IndexFunction indexFunction) {
-        Masks masks = new Masks(width, height);
+    private static void printXsAndYs(int width, int height, int number) {
+        int length = (width + 2 * number - 2) * (height + 2 * number - 2);
+        int[] xs = new int[length];
+        int[] ys = new int[length];
 
-        for (int x = 0; x < width; x++)
-            for (int y = 0; y < height; y++) {
+        for (int index = 0; index < length; index++) {
+            int x = index % (width + 2 * number - 2) - 1;
+            int y = index / (width + 2 * number - 2) - 1;
+            xs[index] = x;
+            ys[index] = y;
+        }
+        System.out.printf("const uint[%d] %s_%d = uint[%d]%s;%n", length, "XS", number, length, Masks.getArrayStringSigned(xs));
+        System.out.printf("const uint[%d] %s_%d = uint[%d]%s;%n", length, "YS", number, length, Masks.getArrayStringSigned(ys));
+    }
+
+    private static void buildMasksArrays(int width, int height, int number, IndexFunction indexFunction) {
+        Masks masks = new Masks(width, height, number);
+
+        for (int x = -number + 1; x < width + number - 1; x++)
+            for (int y = -number + 1; y < height + number - 1; y++) {
                 int maskIndex = indexFunction.index(x, y);
                 setBit(masks, indexFunction, maskIndex, x - 1, y - 1);
                 setBit(masks, indexFunction, maskIndex, x - 1, y);
@@ -22,7 +43,7 @@ public final class MaskGenerator {
                 setBit(masks, indexFunction, maskIndex, x + 1, y + 1);
             }
 
-        System.out.println(masks);
+        System.out.println(masks.toString(number));
     }
 
     private static void setBit(Masks masks, IndexFunction indexFunction, int maskIndex, int x, int y) {
@@ -50,15 +71,18 @@ public final class MaskGenerator {
                          int[] left, int[] center, int[] right,
                          int[] bottomLeft, int[] bottom, int[] bottomRight) {
 
-        public Masks(int width, int height) {
-            this(new int[width * height], new int[width * height], new int[width * height],
-                    new int[width * height], new int[width * height], new int[width * height],
-                    new int[width * height], new int[width * height], new int[width * height]);
+        public Masks(int length) {
+            this(new int[length], new int[length], new int[length],
+                    new int[length], new int[length], new int[length],
+                    new int[length], new int[length], new int[length]);
         }
 
-        @Override
-        public String toString() {
-            String format = "const uint[%d] %s = uint[%d]%s;%n".formatted(top.length, "%s", top.length, "%s");
+        public Masks(int width, int height, int number) {
+            this((width + 2 * number - 2) * (height + 2 * number - 2));
+        }
+
+        public String toString(int number) {
+            String format = "const uint[%d] %s_%d = uint[%d]%s;%n".formatted(top.length, "%s", number, top.length, "%s");
 
             return format.formatted("TOP_LEFT", getArrayString(topLeft)) +
                     format.formatted("TOP", getArrayString(top)) +
@@ -74,6 +98,13 @@ public final class MaskGenerator {
         private static String getArrayString(int[] array) {
             StringBuilder builder = new StringBuilder("(");
             for (int mask : array) builder.append("0x").append(Integer.toHexString(mask)).append(",");
+            builder.setCharAt(builder.length() - 1, ')');
+            return builder.toString();
+        }
+
+        private static String getArrayStringSigned(int[] array) {
+            StringBuilder builder = new StringBuilder("(");
+            for (int mask : array) builder.append(mask).append(",");
             builder.setCharAt(builder.length() - 1, ')');
             return builder.toString();
         }
