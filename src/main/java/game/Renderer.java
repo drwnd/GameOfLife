@@ -81,7 +81,7 @@ public final class Renderer extends Renderable {
         long nanoTimeBetweenGenerations = (long) (1_000_000_000F / FloatSetting.MAX_GENERATIONS_PER_SECOND.value());
         long nanoTimeSinceLastGeneration = currentTime - lastGenerationNanoTime;
 
-        boolean shouldRunGeneration = nanoTimeSinceLastGeneration > nanoTimeBetweenGenerations;
+        boolean shouldRunGeneration = nanoTimeSinceLastGeneration > nanoTimeBetweenGenerations * (ToggleSetting.COMPUTE_DOUBLE_GENERATION.value() ? 2 : 1);
         shouldRunGeneration = shouldRunGeneration && ToggleSetting.SIMULATION_RUNNING.value();
 
         if (shouldRunGeneration) {
