@@ -2,16 +2,18 @@
 
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(r32ui, binding = 0) restrict uniform uimage2D nextSource;
-layout(r32ui, binding = 1) restrict uniform uimage2D nextDestination;
+layout (r32ui, binding = 0) restrict uniform uimage2D nextSource;
+layout (r32ui, binding = 1) restrict uniform uimage2D nextDestination;
 
 uniform ivec2 position;
 
 void main() {
-    ivec2 coord = ivec2(position.x >> 2, position.y >> 3);
+    int x = position.x < 0 ? position.x - 1 : position.x;
+    int y = position.y < 0 ? position.y - 1 : position.y;
+    ivec2 coord = ivec2(x >> 2, y >> 3);
 
     uint value = imageLoad(nextSource, coord).r;
-    value ^= 1 << (position.y << 2 | position.x & 3);
+    value ^= 1 << (y << 2 | x & 3);
     imageStore(nextSource, coord, uvec4(value));
     imageStore(nextDestination, coord, uvec4(value));
 }
