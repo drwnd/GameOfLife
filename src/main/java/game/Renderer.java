@@ -97,8 +97,8 @@ public final class Renderer extends Renderable {
         ComputeShader changeShader = (ComputeShader) AssetManager.get(Shaders.CHANGE_CELL);
         changeShader.bind();
 
-        glBindImageTexture(0, texture1, 0, false, 0, GL_READ_WRITE, GL_R32I);
-        glBindImageTexture(1, texture0, 0, false, 0, GL_READ_WRITE, GL_R32I);
+        glBindImageTexture(0, sourceTexture, 0, false, 0, GL_READ_WRITE, GL_R32I);
+        glBindImageTexture(1, resultTexture, 0, false, 0, GL_READ_WRITE, GL_R32I);
         while (!toChangePixels.isEmpty()) {
             Vector2i pixelCoordinate = toChangePixels.removeLast();
             changeShader.setUniform("position", pixelCoordinate.x, pixelCoordinate.y);
@@ -111,9 +111,12 @@ public final class Renderer extends Renderable {
         shader.bind();
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture1);
+        glBindTexture(GL_TEXTURE_2D, sourceTexture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, changedFlagTexture);
 
         shader.setUniform("board", 0);
+        shader.setUniform("changedMap", 1);
         shader.setUniform("start", (float) startX, startY);
         shader.setUniform("viewSize", getSizeX(), getSizeY());
         shader.setUniform("boardSize", 1 << SIZE_BITS);
@@ -124,24 +127,27 @@ public final class Renderer extends Renderable {
         shader.drawFullScreenQuad();
 
         if (shouldRunGeneration) {
-            int temp = texture0;
-            texture0 = texture1;
-            texture1 = temp;
+            int temp = resultTexture;
+            resultTexture = sourceTexture;
+            sourceTexture = temp;
         }
     }
 
     private void runGenerationNoChunking() {
-        chunkingActive = false;
+        chunkingActive = doubleComputationActive = false;
         ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_NO_CHUNKING);
         computeShader.bind();
         computeShader.setUniform("mask", MASK);
-        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32UI);
-        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32UI);
+        computeShader.setUniform("computeDoubleGeneration", ToggleSetting.COMPUTE_DOUBLE_GENERATION.value());
+        glBindImageTexture(0, resultTexture, 0, false, 0, GL_WRITE_ONLY, GL_R32UI);
+        glBindImageTexture(1, sourceTexture, 0, false, 0, GL_READ_ONLY, GL_R32UI);
         glDispatchCompute(1 << SIZE_BITS - 7, 1 << SIZE_BITS - 3, 1);
     }
 
     private void runGenerationWithChunking() {
-        if (!chunkingActive) activateChunking();
+        if (!chunkingActive || doubleComputationActive && !ToggleSetting.COMPUTE_DOUBLE_GENERATION.value()) forceRecomputation();
+        doubleComputationActive = ToggleSetting.COMPUTE_DOUBLE_GENERATION.value();
+        chunkingActive = true;
 
         glNamedBufferSubData(indirectDispatchBuffer, 0, new int[]{0, 1, 1});
 
@@ -158,22 +164,16 @@ public final class Renderer extends Renderable {
         ComputeShader computeShader = (ComputeShader) AssetManager.get(Shaders.GAME_OF_LIFE_WITH_CHUNKING);
         computeShader.bind();
         computeShader.setUniform("mask", MASK);
-        computeShader.setUniform("computeDoubleGeneration", ToggleSetting.COMPUTE_DOUBLE_GENERATION.value());
-        glBindImageTexture(0, texture0, 0, false, 0, GL_WRITE_ONLY, GL_R32UI);
-        glBindImageTexture(1, texture1, 0, false, 0, GL_READ_ONLY, GL_R32UI);
+        computeShader.setUniform("computeDoubleGeneration", doubleComputationActive);
+        glBindImageTexture(0, resultTexture, 0, false, 0, GL_WRITE_ONLY, GL_R32UI);
+        glBindImageTexture(1, sourceTexture, 0, false, 0, GL_READ_ONLY, GL_R32UI);
         glBindImageTexture(2, changedFlagTexture, 0, false, 0, GL_WRITE_ONLY, GL_R8UI);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, startPositionsBuffer);
         glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, indirectDispatchBuffer);
         glDispatchComputeIndirect(0);
     }
 
-    private void activateChunking() {
-        chunkingActive = true;
-        glCopyImageSubData(
-                texture1, GL_TEXTURE_2D, 0, 0, 0, 0,
-                texture0, GL_TEXTURE_2D, 0, 0, 0, 0,
-                1 << SIZE_BITS - 2, 1 << SIZE_BITS - 3, 1);
-
+    private void forceRecomputation() {
         glClearTexImage(changedFlagTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, new int[]{0x01010101});
     }
 
@@ -225,19 +225,19 @@ public final class Renderer extends Renderable {
         SIZE_BITS = (int) FloatSetting.SIZE_BITS.value();
         MASK = (1 << SIZE_BITS) - 1;
 
-        if (texture0 != 0) glDeleteTextures(texture0);
-        if (texture1 != 0) glDeleteTextures(texture1);
+        if (resultTexture != 0) glDeleteTextures(resultTexture);
+        if (sourceTexture != 0) glDeleteTextures(sourceTexture);
         if (changedFlagTexture != 0) glDeleteTextures(changedFlagTexture);
         if (startPositionsBuffer != 0) glDeleteBuffers(startPositionsBuffer);
         if (indirectDispatchBuffer != 0) glDeleteBuffers(indirectDispatchBuffer);
 
         GameInitializer initializer = (GameInitializer) OptionSetting.INITIALIZER.value();
-        texture0 = genTexture(null);
-        texture1 = genTexture(initializer.getInitializedBoard());
+        resultTexture = genTexture(null);
+        sourceTexture = genTexture(initializer.getInitializedBoard());
         changedFlagTexture = genChangedFlagTexture();
         startPositionsBuffer = genStartPositionsBuffer();
         indirectDispatchBuffer = genIndirectDispatchBuffer();
-        chunkingActive = false;
+        chunkingActive = doubleComputationActive = false;
     }
 
     private void change(Vector2i cursorPos) {
@@ -250,11 +250,11 @@ public final class Renderer extends Renderable {
     }
 
 
-    private int texture0 = 0, texture1 = 0;
+    private int resultTexture = 0, sourceTexture = 0;
     private int startX = 0, startY = 0;
     private float cellSize = 1;
     private long lastGenerationNanoTime = System.nanoTime();
-    private boolean chunkingActive = false;
+    private boolean chunkingActive = false, doubleComputationActive = false;
 
     private int changedFlagTexture = 0, startPositionsBuffer = 0, indirectDispatchBuffer = 0;
 

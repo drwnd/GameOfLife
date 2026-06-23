@@ -6,16 +6,7 @@ layout (r32ui, binding = 0) writeonly restrict uniform uimage2D destination;
 layout (r32ui, binding = 1) readonly restrict uniform uimage2D source;
 
 uniform int mask;
-
-const uint[32] TOP_LEFT = uint[32](0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x8, 0x0, 0x0, 0x0);
-const uint[32] TOP = uint[32](0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3, 0x7, 0xe, 0xc);
-const uint[32] TOP_RIGHT = uint[32](0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1);
-const uint[32] LEFT = uint[32](0x88, 0x0, 0x0, 0x0, 0x888, 0x0, 0x0, 0x0, 0x8880, 0x0, 0x0, 0x0, 0x88800, 0x0, 0x0, 0x0, 0x888000, 0x0, 0x0, 0x0, 0x8880000, 0x0, 0x0, 0x0, 0x88800000, 0x0, 0x0, 0x0, 0x88000000, 0x0, 0x0, 0x0);
-const uint[32] CENTER = uint[32](0x32, 0x75, 0xea, 0xc4, 0x323, 0x757, 0xeae, 0xc4c, 0x3230, 0x7570, 0xeae0, 0xc4c0, 0x32300, 0x75700, 0xeae00, 0xc4c00, 0x323000, 0x757000, 0xeae000, 0xc4c000, 0x3230000, 0x7570000, 0xeae0000, 0xc4c0000, 0x32300000, 0x75700000, 0xeae00000, 0xc4c00000, 0x23000000, 0x57000000, 0xae000000, 0x4c000000);
-const uint[32] RIGHT = uint[32](0x0, 0x0, 0x0, 0x11, 0x0, 0x0, 0x0, 0x111, 0x0, 0x0, 0x0, 0x1110, 0x0, 0x0, 0x0, 0x11100, 0x0, 0x0, 0x0, 0x111000, 0x0, 0x0, 0x0, 0x1110000, 0x0, 0x0, 0x0, 0x11100000, 0x0, 0x0, 0x0, 0x11000000);
-const uint[32] BOTTOM_LEFT = uint[32](0x80000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0);
-const uint[32] BOTTOM = uint[32](0x30000000, 0x70000000, 0xe0000000, 0xc0000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0);
-const uint[32] BOTTOM_RIGHT = uint[32](0x0, 0x0, 0x0, 0x10000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0);
+uniform bool computeDoubleGeneration;
 
 struct Region {
     uint topLeft;
@@ -49,32 +40,547 @@ Region sampleRegion(ivec2 texelCoord) {
     return Region(topLeft, top, topRight, left, center, right, bottomLeft, bottom, bottomRight);
 }
 
-uint countNeighbors(Region region, uint index) {
-    return bitCount(
-        region.topLeft & TOP_LEFT[index] |
-        region.top & TOP[index] |
-        region.topRight & TOP_RIGHT[index] |
-        region.left & LEFT[index] |
-        region.center & CENTER[index] |
-        region.right & RIGHT[index] |
-        region.bottomLeft & BOTTOM_LEFT[index] |
-        region.bottom & BOTTOM[index] |
-        region.bottomRight & BOTTOM_RIGHT[index]
-    );
+uint computeCenter(Region region) {
+    uint result = 0, counter;
+
+    counter = region.center & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x88 | region.center & 0x32 | region.bottomLeft & 0x80000000 | region.bottom & 0x30000000);
+    result |= (0xC0008 >> counter & 1);
+
+    counter = region.center >> 1 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x75 | region.bottom & 0x70000000);
+    result |= (0xC0008 >> counter & 1) << 1;
+
+    counter = region.center >> 2 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xea | region.bottom & 0xe0000000);
+    result |= (0xC0008 >> counter & 1) << 2;
+
+    counter = region.center >> 3 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4 | region.right & 0x11 | region.bottom & 0xc0000000 | region.bottomRight & 0x10000000);
+    result |= (0xC0008 >> counter & 1) << 3;
+
+    counter = region.center >> 4 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x888 | region.center & 0x323);
+    result |= (0xC0008 >> counter & 1) << 4;
+
+    counter = region.center >> 5 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x757);
+    result |= (0xC0008 >> counter & 1) << 5;
+
+    counter = region.center >> 6 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae);
+    result |= (0xC0008 >> counter & 1) << 6;
+
+    counter = region.center >> 7 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c | region.right & 0x111);
+    result |= (0xC0008 >> counter & 1) << 7;
+
+    counter = region.center >> 8 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x8880 | region.center & 0x3230);
+    result |= (0xC0008 >> counter & 1) << 8;
+
+    counter = region.center >> 9 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x7570);
+    result |= (0xC0008 >> counter & 1) << 9;
+
+    counter = region.center >> 10 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae0);
+    result |= (0xC0008 >> counter & 1) << 10;
+
+    counter = region.center >> 11 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c0 | region.right & 0x1110);
+    result |= (0xC0008 >> counter & 1) << 11;
+
+    counter = region.center >> 12 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x88800 | region.center & 0x32300);
+    result |= (0xC0008 >> counter & 1) << 12;
+
+    counter = region.center >> 13 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x75700);
+    result |= (0xC0008 >> counter & 1) << 13;
+
+    counter = region.center >> 14 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae00);
+    result |= (0xC0008 >> counter & 1) << 14;
+
+    counter = region.center >> 15 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c00 | region.right & 0x11100);
+    result |= (0xC0008 >> counter & 1) << 15;
+
+    counter = region.center >> 16 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x888000 | region.center & 0x323000);
+    result |= (0xC0008 >> counter & 1) << 16;
+
+    counter = region.center >> 17 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x757000);
+    result |= (0xC0008 >> counter & 1) << 17;
+
+    counter = region.center >> 18 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae000);
+    result |= (0xC0008 >> counter & 1) << 18;
+
+    counter = region.center >> 19 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c000 | region.right & 0x111000);
+    result |= (0xC0008 >> counter & 1) << 19;
+
+    counter = region.center >> 20 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x8880000 | region.center & 0x3230000);
+    result |= (0xC0008 >> counter & 1) << 20;
+
+    counter = region.center >> 21 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x7570000);
+    result |= (0xC0008 >> counter & 1) << 21;
+
+    counter = region.center >> 22 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae0000);
+    result |= (0xC0008 >> counter & 1) << 22;
+
+    counter = region.center >> 23 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c0000 | region.right & 0x1110000);
+    result |= (0xC0008 >> counter & 1) << 23;
+
+    counter = region.center >> 24 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x88800000 | region.center & 0x32300000);
+    result |= (0xC0008 >> counter & 1) << 24;
+
+    counter = region.center >> 25 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x75700000);
+    result |= (0xC0008 >> counter & 1) << 25;
+
+    counter = region.center >> 26 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae00000);
+    result |= (0xC0008 >> counter & 1) << 26;
+
+    counter = region.center >> 27 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c00000 | region.right & 0x11100000);
+    result |= (0xC0008 >> counter & 1) << 27;
+
+    counter = region.center >> 28 & 1;
+    counter <<= 4;
+    counter += bitCount(region.topLeft & 0x8 | region.top & 0x3 | region.left & 0x88000000 | region.center & 0x23000000);
+    result |= (0xC0008 >> counter & 1) << 28;
+
+    counter = region.center >> 29 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0x7 | region.center & 0x57000000);
+    result |= (0xC0008 >> counter & 1) << 29;
+
+    counter = region.center >> 30 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0xe | region.center & 0xae000000);
+    result |= (0xC0008 >> counter & 1) << 30;
+
+    counter = region.center >> 31 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0xc | region.topRight & 0x1 | region.center & 0x4c000000 | region.right & 0x11000000);
+    result |= (0xC0008 >> counter & 1) << 31;
+
+    return result;
+}
+
+
+Region computeCenterPadded(Region region) {
+    Region result = Region(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    uint counter, value;
+
+    counter = region.bottomLeft >> 31 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc | region.center & 0x1 | region.bottomLeft & 0x4c000000 | region.bottom & 0x11000000);
+    value = (0xC0008 >> counter & 1) << 31;
+    result.bottomLeft |= value;
+
+    counter = region.bottom >> 28 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x8 | region.center & 0x3 | region.bottomLeft & 0x88000000 | region.bottom & 0x23000000);
+    value = (0xC0008 >> counter & 1) << 28;
+    result.bottom |= value;
+
+    counter = region.bottom >> 29 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x7 | region.bottom & 0x57000000);
+    value = (0xC0008 >> counter & 1) << 29;
+    result.bottom |= value;
+
+    counter = region.bottom >> 30 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xe | region.bottom & 0xae000000);
+    value = (0xC0008 >> counter & 1) << 30;
+    result.bottom |= value;
+
+    counter = region.bottom >> 31 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc | region.right & 0x1 | region.bottom & 0x4c000000 | region.bottomRight & 0x11000000);
+    value = (0xC0008 >> counter & 1) << 31;
+    result.bottom |= value;
+
+    counter = region.bottomRight >> 28 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x8 | region.right & 0x3 | region.bottom & 0x88000000 | region.bottomRight & 0x23000000);
+    value = (0xC0008 >> counter & 1) << 28;
+    result.bottomRight |= value;
+
+    counter = region.left >> 3 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc4 | region.center & 0x11 | region.bottomLeft & 0xc0000000 | region.bottom & 0x10000000);
+    value = (0xC0008 >> counter & 1) << 3;
+    result.left |= value;
+
+    counter = region.center & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x88 | region.center & 0x32 | region.bottomLeft & 0x80000000 | region.bottom & 0x30000000);
+    value = (0xC0008 >> counter & 1);
+    result.center |= value;
+
+    counter = region.center >> 1 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x75 | region.bottom & 0x70000000);
+    value = (0xC0008 >> counter & 1) << 1;
+    result.center |= value;
+
+    counter = region.center >> 2 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xea | region.bottom & 0xe0000000);
+    value = (0xC0008 >> counter & 1) << 2;
+    result.center |= value;
+
+    counter = region.center >> 3 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4 | region.right & 0x11 | region.bottom & 0xc0000000 | region.bottomRight & 0x10000000);
+    value = (0xC0008 >> counter & 1) << 3;
+    result.center |= value;
+
+    counter = region.right & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x88 | region.right & 0x32 | region.bottom & 0x80000000 | region.bottomRight & 0x30000000);
+    value = (0xC0008 >> counter & 1);
+    result.right |= value;
+
+    counter = region.left >> 7 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc4c | region.center & 0x111);
+    value = (0xC0008 >> counter & 1) << 7;
+    result.left |= value;
+
+    counter = region.center >> 4 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x888 | region.center & 0x323);
+    value = (0xC0008 >> counter & 1) << 4;
+    result.center |= value;
+
+    counter = region.center >> 5 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x757);
+    value = (0xC0008 >> counter & 1) << 5;
+    result.center |= value;
+
+    counter = region.center >> 6 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae);
+    value = (0xC0008 >> counter & 1) << 6;
+    result.center |= value;
+
+    counter = region.center >> 7 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c | region.right & 0x111);
+    value = (0xC0008 >> counter & 1) << 7;
+    result.center |= value;
+
+    counter = region.right >> 4 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x888 | region.right & 0x323);
+    value = (0xC0008 >> counter & 1) << 4;
+    result.right |= value;
+
+    counter = region.left >> 11 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc4c0 | region.center & 0x1110);
+    value = (0xC0008 >> counter & 1) << 11;
+    result.left |= value;
+
+    counter = region.center >> 8 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x8880 | region.center & 0x3230);
+    value = (0xC0008 >> counter & 1) << 8;
+    result.center |= value;
+
+    counter = region.center >> 9 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x7570);
+    value = (0xC0008 >> counter & 1) << 9;
+    result.center |= value;
+
+    counter = region.center >> 10 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae0);
+    value = (0xC0008 >> counter & 1) << 10;
+    result.center |= value;
+
+    counter = region.center >> 11 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c0 | region.right & 0x1110);
+    value = (0xC0008 >> counter & 1) << 11;
+    result.center |= value;
+
+    counter = region.right >> 8 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x8880 | region.right & 0x3230);
+    value = (0xC0008 >> counter & 1) << 8;
+    result.right |= value;
+
+    counter = region.left >> 15 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc4c00 | region.center & 0x11100);
+    value = (0xC0008 >> counter & 1) << 15;
+    result.left |= value;
+
+    counter = region.center >> 12 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x88800 | region.center & 0x32300);
+    value = (0xC0008 >> counter & 1) << 12;
+    result.center |= value;
+
+    counter = region.center >> 13 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x75700);
+    value = (0xC0008 >> counter & 1) << 13;
+    result.center |= value;
+
+    counter = region.center >> 14 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae00);
+    value = (0xC0008 >> counter & 1) << 14;
+    result.center |= value;
+
+    counter = region.center >> 15 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c00 | region.right & 0x11100);
+    value = (0xC0008 >> counter & 1) << 15;
+    result.center |= value;
+
+    counter = region.right >> 12 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x88800 | region.right & 0x32300);
+    value = (0xC0008 >> counter & 1) << 12;
+    result.right |= value;
+
+    counter = region.left >> 19 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc4c000 | region.center & 0x111000);
+    value = (0xC0008 >> counter & 1) << 19;
+    result.left |= value;
+
+    counter = region.center >> 16 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x888000 | region.center & 0x323000);
+    value = (0xC0008 >> counter & 1) << 16;
+    result.center |= value;
+
+    counter = region.center >> 17 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x757000);
+    value = (0xC0008 >> counter & 1) << 17;
+    result.center |= value;
+
+    counter = region.center >> 18 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae000);
+    value = (0xC0008 >> counter & 1) << 18;
+    result.center |= value;
+
+    counter = region.center >> 19 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c000 | region.right & 0x111000);
+    value = (0xC0008 >> counter & 1) << 19;
+    result.center |= value;
+
+    counter = region.right >> 16 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x888000 | region.right & 0x323000);
+    value = (0xC0008 >> counter & 1) << 16;
+    result.right |= value;
+
+    counter = region.left >> 23 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc4c0000 | region.center & 0x1110000);
+    value = (0xC0008 >> counter & 1) << 23;
+    result.left |= value;
+
+    counter = region.center >> 20 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x8880000 | region.center & 0x3230000);
+    value = (0xC0008 >> counter & 1) << 20;
+    result.center |= value;
+
+    counter = region.center >> 21 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x7570000);
+    value = (0xC0008 >> counter & 1) << 21;
+    result.center |= value;
+
+    counter = region.center >> 22 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae0000);
+    value = (0xC0008 >> counter & 1) << 22;
+    result.center |= value;
+
+    counter = region.center >> 23 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c0000 | region.right & 0x1110000);
+    value = (0xC0008 >> counter & 1) << 23;
+    result.center |= value;
+
+    counter = region.right >> 20 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x8880000 | region.right & 0x3230000);
+    value = (0xC0008 >> counter & 1) << 20;
+    result.right |= value;
+
+    counter = region.left >> 27 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0xc4c00000 | region.center & 0x11100000);
+    value = (0xC0008 >> counter & 1) << 27;
+    result.left |= value;
+
+    counter = region.center >> 24 & 1;
+    counter <<= 4;
+    counter += bitCount(region.left & 0x88800000 | region.center & 0x32300000);
+    value = (0xC0008 >> counter & 1) << 24;
+    result.center |= value;
+
+    counter = region.center >> 25 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x75700000);
+    value = (0xC0008 >> counter & 1) << 25;
+    result.center |= value;
+
+    counter = region.center >> 26 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xeae00000);
+    value = (0xC0008 >> counter & 1) << 26;
+    result.center |= value;
+
+    counter = region.center >> 27 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0xc4c00000 | region.right & 0x11100000);
+    value = (0xC0008 >> counter & 1) << 27;
+    result.center |= value;
+
+    counter = region.right >> 24 & 1;
+    counter <<= 4;
+    counter += bitCount(region.center & 0x88800000 | region.right & 0x32300000);
+    value = (0xC0008 >> counter & 1) << 24;
+    result.right |= value;
+
+    counter = region.left >> 31 & 1;
+    counter <<= 4;
+    counter += bitCount(region.topLeft & 0xc | region.top & 0x1 | region.left & 0x4c000000 | region.center & 0x11000000);
+    value = (0xC0008 >> counter & 1) << 31;
+    result.left |= value;
+
+    counter = region.center >> 28 & 1;
+    counter <<= 4;
+    counter += bitCount(region.topLeft & 0x8 | region.top & 0x3 | region.left & 0x88000000 | region.center & 0x23000000);
+    value = (0xC0008 >> counter & 1) << 28;
+    result.center |= value;
+
+    counter = region.center >> 29 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0x7 | region.center & 0x57000000);
+    value = (0xC0008 >> counter & 1) << 29;
+    result.center |= value;
+
+    counter = region.center >> 30 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0xe | region.center & 0xae000000);
+    value = (0xC0008 >> counter & 1) << 30;
+    result.center |= value;
+
+    counter = region.center >> 31 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0xc | region.topRight & 0x1 | region.center & 0x4c000000 | region.right & 0x11000000);
+    value = (0xC0008 >> counter & 1) << 31;
+    result.center |= value;
+
+    counter = region.right >> 28 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0x8 | region.topRight & 0x3 | region.center & 0x88000000 | region.right & 0x23000000);
+    value = (0xC0008 >> counter & 1) << 28;
+    result.right |= value;
+
+    counter = region.topLeft >> 3 & 1;
+    counter <<= 4;
+    counter += bitCount(region.topLeft & 0xc4 | region.top & 0x11 | region.left & 0xc0000000 | region.center & 0x10000000);
+    value = (0xC0008 >> counter & 1) << 3;
+    result.topLeft |= value;
+
+    counter = region.top & 1;
+    counter <<= 4;
+    counter += bitCount(region.topLeft & 0x88 | region.top & 0x32 | region.left & 0x80000000 | region.center & 0x30000000);
+    value = (0xC0008 >> counter & 1);
+    result.top |= value;
+
+    counter = region.top >> 1 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0x75 | region.center & 0x70000000);
+    value = (0xC0008 >> counter & 1) << 1;
+    result.top |= value;
+
+    counter = region.top >> 2 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0xea | region.center & 0xe0000000);
+    value = (0xC0008 >> counter & 1) << 2;
+    result.top |= value;
+
+    counter = region.top >> 3 & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0xc4 | region.topRight & 0x11 | region.center & 0xc0000000 | region.right & 0x10000000);
+    value = (0xC0008 >> counter & 1) << 3;
+    result.top |= value;
+
+    counter = region.topRight & 1;
+    counter <<= 4;
+    counter += bitCount(region.top & 0x88 | region.topRight & 0x32 | region.center & 0x80000000 | region.right & 0x30000000);
+    value = (0xC0008 >> counter & 1);
+    result.topRight |= value;
+
+    return result;
 }
 
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
     Region region = sampleRegion(texelCoord);
-    uint result = 0;
 
-    for (uint index = 0; index < 32; index++) {
-        uint counter = (region.center >> index & 1) << 4;
-        counter += countNeighbors(region, index);
-
-        result |= (0xc0008 >> counter & 1) << index;
-    }
+    if (computeDoubleGeneration) region = computeCenterPadded(region);
+    uint result = computeCenter(region);
 
     imageStore(destination, texelCoord, uvec4(result));
 }

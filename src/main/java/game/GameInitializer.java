@@ -3,6 +3,8 @@ package game;
 import core.settings.FloatSetting;
 import core.settings.optionSettings.Option;
 
+import java.util.Random;
+
 import static game.Renderer.MASK;
 import static game.Renderer.SIZE_BITS;
 
@@ -115,10 +117,11 @@ public enum GameInitializer implements Option {
 
     private static int[] randomizeBoard(double threshold) {
         int[] board = new int[(1 << SIZE_BITS - 5) * (1 << SIZE_BITS)];
+        Random random = new Random();
 
         for (int y = 0; y < 1 << SIZE_BITS; y++)
             for (int x = 0; x < 1 << SIZE_BITS; x++) {
-                if (Math.random() < threshold) continue;
+                if (random.nextFloat() < threshold) continue;
                 changePixel(board, x, y);
             }
         return board;
