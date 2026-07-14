@@ -97,8 +97,8 @@ public final class Renderer extends Renderable {
         ComputeShader changeShader = (ComputeShader) AssetManager.get(Shaders.CHANGE_CELL);
         changeShader.bind();
 
-        glBindImageTexture(0, sourceTexture, 0, false, 0, GL_READ_WRITE, GL_R32I);
-        glBindImageTexture(1, resultTexture, 0, false, 0, GL_READ_WRITE, GL_R32I);
+        glBindImageTexture(0, sourceTexture, 0, false, 0, GL_READ_WRITE, GL_R32UI);
+        glBindImageTexture(1, resultTexture, 0, false, 0, GL_READ_WRITE, GL_R32UI);
         while (!toChangePixels.isEmpty()) {
             Vector2i pixelCoordinate = toChangePixels.removeLast();
             changeShader.setUniform("position", pixelCoordinate.x, pixelCoordinate.y);
